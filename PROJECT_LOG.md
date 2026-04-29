@@ -13,8 +13,8 @@ Debe actualizarse después de cada intervención relevante de Codex.
 - Repositorio/directorio principal: `PNNN`.
 - Modelo investigado: red neuronal *phase-normalized* para DPD/modelado con señales complejas.
 - Scripts principales:
-  - `train_NN_DPD_offline.m`
-  - `run_NN_DPD_online_from_xy.m`
+  - `train_PNNN_offline.m`
+  - `run_PNNN_online_from_xy.m`
 - Variable principal de inferencia:
   - `yhat`
 - Variables relacionadas en el `.mat` de inferencia:
@@ -43,7 +43,7 @@ En este repositorio:
 Comando habitual:
 
 ```powershell
-matlab -batch "train_NN_DPD_offline"
+matlab -batch "train_PNNN_offline"
 ```
 
 Este script entrena la red y genera normalmente:
@@ -60,7 +60,7 @@ dentro de una carpeta de experimento bajo `results/`.
 Comando habitual:
 
 ```powershell
-matlab -batch "run_NN_DPD_online_from_xy"
+matlab -batch "run_PNNN_online_from_xy"
 ```
 
 Este script carga el `deploy_package.mat` correspondiente y genera un `.mat` de salida bajo:
@@ -80,6 +80,10 @@ yhat
 ## Resultados recientes
 
 ### 2026-04-28 — PNNN con medida `experiment20260428T170911_xy`
+
+Nota de legado:
+- Esta entrada procede de la etapa en la que el proyecto aún usaba nombres `NN_DPD` en scripts y rutas de resultados.
+- En el repo limpio oficial actual, los scripts equivalentes son `train_PNNN_offline.m` y `run_PNNN_online_from_xy.m`.
 
 #### Entrenamiento
 
@@ -253,6 +257,46 @@ Resultados:
 Pendiente:
 - Decidir si se crea una rama/historial limpio para GitHub o si se limpia el historial existente con confirmación explícita.
 - Revisar y ordenar los cambios staged/unstaged antes de cualquier commit o push.
+
+---
+
+### 2026-04-29 — Armonización documental del repo oficial PNNN
+
+Objetivo:
+- Alinear la documentación del repositorio limpio oficial `PNNN` con los scripts actuales y evitar confusión con nombres legacy `NN_DPD`.
+
+Archivos modificados:
+- `AGENTS.md`
+- `CODEX_WORKFLOW.md`
+- `README.txt`
+- `README.md`
+- `PROJECT_LOG.md`
+
+Cambios realizados:
+- Se reforzó que el directorio `PNNN` actual es el repo limpio oficial conectado a `https://github.com/sermunagu/PNNN.git`.
+- Se documentó que `NN_DPD` es un nombre histórico que puede aparecer en rutas o resultados antiguos.
+- Se sustituyeron ejemplos operativos por `train_PNNN_offline.m` y `run_PNNN_online_from_xy.m`.
+- Se aclaró que no se debe trabajar desde copias legacy antiguas salvo indicación explícita.
+- Se reforzó que `CVNN` es un proyecto separado.
+- Se añadió `README.md` para visualización directa en GitHub, conservando `README.txt`.
+- Se mantuvo la convención local X/Y y la advertencia de no interpretar automáticamente `xy_forward` como PA-forward.
+
+Comandos ejecutados por Codex:
+- `rg` para buscar referencias documentales.
+- Lectura de documentación con `Get-Content`.
+- `git status --short`.
+- `git diff --stat`.
+
+Comandos que debe ejecutar el usuario:
+- Ninguno para esta intervención documental.
+
+Resultados:
+- No se modificó lógica MATLAB.
+- No se ejecutó MATLAB.
+- No se añadieron medidas, resultados, modelos `.mat`, figuras `.fig` ni deploy packages.
+
+Pendiente:
+- Revisar si en una intervención posterior conviene limpiar o reestructurar entradas históricas de resultados sin perder trazabilidad.
 
 ---
 

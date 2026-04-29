@@ -6,13 +6,23 @@ Este repositorio contiene el flujo de entrenamiento, evaluación e inferencia de
 
 El objetivo principal es mantener un código limpio, entendible y reproducible para investigación. Los resultados deben poder explicarse a un tutor de investigación sin depender de scripts confusos, flags temporales o cambios difíciles de seguir.
 
+Este directorio `PNNN` es el repositorio limpio oficial conectado a GitHub:
+
+```text
+https://github.com/sermunagu/PNNN.git
+```
+
+El proyecto se llamaba antes `NN_DPD`; ese nombre puede aparecer en resultados, rutas o notas históricas, pero no debe usarse para el flujo operativo actual salvo que se esté documentando explícitamente legado. No trabajar desde copias legacy antiguas salvo indicación explícita del usuario.
+
+`CVNN` es un proyecto separado y no debe mezclarse con este repositorio.
+
 ---
 
 ## Reglas generales de trabajo
 
 - No ejecutar entrenamientos largos de MATLAB salvo que el usuario lo pida explícitamente.
 - No ejecutar inferencias largas salvo que el usuario lo pida explícitamente.
-- No lanzar scripts completos como `train_NN_DPD_offline.m` o `run_NN_DPD_online_from_xy.m` sin permiso explícito.
+- No lanzar scripts completos como `train_PNNN_offline.m` o `run_PNNN_online_from_xy.m` sin permiso explícito.
 - Sí se pueden ejecutar comandos ligeros de inspección, como:
   - `git status`
   - `git diff`
@@ -100,8 +110,8 @@ El usuario prefiere ejecutar MATLAB manualmente.
 Codex debe dejar comandos claros para que el usuario los ejecute, por ejemplo:
 
 ```powershell
-matlab -batch "train_NN_DPD_offline"
-matlab -batch "run_NN_DPD_online_from_xy"
+matlab -batch "train_PNNN_offline"
+matlab -batch "run_PNNN_online_from_xy"
 ```
 
 Después, el usuario pegará los resultados para interpretarlos.
@@ -115,6 +125,7 @@ Codex no debe lanzar estos comandos salvo permiso explícito.
 Cuando se cambie comportamiento del código, actualizar documentación relacionada si existe:
 
 - `README.md`
+- `README.txt`
 - `PROJECT_LOG.md`
 - informes `.tex`
 - notas de resultados
@@ -153,7 +164,7 @@ Cuando se obtengan resultados, registrar:
 
 En este repositorio, la señal final de inferencia debe identificarse explícitamente.
 
-Actualmente, en los outputs de inferencia de PNNN/NN_DPD, la variable principal esperada es:
+Actualmente, en el flujo de inferencia de PNNN, `run_PNNN_online_from_xy.m` guarda la salida principal esperada como:
 
 ```matlab
 yhat

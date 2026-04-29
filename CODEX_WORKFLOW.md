@@ -4,6 +4,14 @@
 
 Este repositorio debe trabajarse con Codex de forma controlada, evitando cambios grandes y evitando ejecuciones largas no solicitadas.
 
+El directorio `PNNN` actual es el repositorio limpio oficial conectado a GitHub:
+
+```text
+https://github.com/sermunagu/PNNN.git
+```
+
+El proyecto se llamaba antes `NN_DPD`, pero los scripts operativos actuales son los de `PNNN`. No trabajar desde copias legacy antiguas salvo indicación explícita del usuario. `CVNN` es un proyecto separado y no debe tocarse desde este flujo.
+
 Los ficheros principales para guiar a Codex son:
 
 - `AGENTS.md`: reglas permanentes de trabajo.
@@ -63,13 +71,13 @@ Dime qué comando ejecuto yo para probarlo.
 Entrenamiento:
 
 ```powershell
-matlab -batch "train_NN_DPD_offline"
+matlab -batch "train_PNNN_offline"
 ```
 
 Inferencia:
 
 ```powershell
-matlab -batch "run_NN_DPD_online_from_xy"
+matlab -batch "run_PNNN_online_from_xy"
 ```
 
 Inspección de output:
