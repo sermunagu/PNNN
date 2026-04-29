@@ -1,0 +1,21 @@
+# Project data and generated artifacts
+/measurements/
+/results/
+/generated_outputs/
+
+# MATLAB binary outputs and deploy packages
+*.mat
+deploy_package.mat
+*.fig
+
+# MATLAB/editor temporary files
+*.asv
+*.m~
+*.tmp
+*.bak
+matlab_crash_dump.*
+*.autosave
+
+# OS files
+.DS_Store
+Thumbs.db
