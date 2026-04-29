@@ -1,20 +1,18 @@
 function [NMSE_val_GMP, NMSE_val_ridge_1e3, NMSE_val_ridge_1e4, rManagerGMP] = GMP_ridge_GVG(x, y, perc)
-
-% run_GMP_ridge_GVG
-%   Calcula el NMSE de validación de un GMP obtenido con GVG (inittype='GMP')
-%   y re-ajusta los coeficientes con regularización ridge (λ = 1e-3 y 1e-4)
-%   sobre la MISMA base de regresores.
+% GMP_ridge_GVG - Evaluate a GMP baseline and ridge variants.
 %
-%   ENTRADAS:
-%     x : señal de entrada al bloque modelado, columna o fila
-%     y : señal de salida del bloque modelado, misma longitud que x
-%     perc (opcional) : porcentaje de muestras para identificación (ej: 0.04)
+% This function builds the GMP regressor basis used as a PNNN baseline,
+% identifies coefficients on a selected subset, and reports validation NMSE
+% for pinv and ridge fits.
 %
-%   SALIDAS:
-%     NMSE_val_GMP        : NMSE de validación del GMP con pinv (GVG)
-%     NMSE_val_ridge_1e3  : NMSE de validación con ridge λ = 1e-3
-%     NMSE_val_ridge_1e4  : NMSE de validación con ridge λ = 1e-4
-%     rManagerGMP         : objeto rManager de GVG con la base GMP
+% Inputs:
+%   x, y - Modeled-block input and output signals under the local X/Y convention.
+%   perc - Optional fraction of samples used for identification.
+%
+% Outputs:
+%   NMSE_val_GMP - Validation NMSE for the pinv GMP fit.
+%   NMSE_val_ridge_1e3, NMSE_val_ridge_1e4 - Validation NMSE for ridge fits.
+%   rManagerGMP - GVG regressor manager restricted to the selected GMP basis.
 
 if nargin < 3
     perc = 0.04;   % por defecto, 4% de muestras para identificación

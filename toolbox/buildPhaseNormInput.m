@@ -1,8 +1,17 @@
 function [X_in, r_vec] = buildPhaseNormInput(x, M, orders, featMode)
-% buildPhaseNormInput Builds phase-normalized NN input features.
+% buildPhaseNormInput - Build phase-normalized PNNN input features.
 %
-% X_in is D x N and r_vec is 1 x N. Memory taps use periodic extension:
-% x(n), x(n-1), ..., x(n-M).
+% This function rotates each sample to the local input phase, builds the
+% configured memory/nonlinear feature vector, and returns the rotations used
+% later to reconstruct the complex model output.
+%
+% Inputs:
+%   x - Modeled-block input signal under the local X/Y convention.
+%   M, orders, featMode - Memory depth, nonlinear orders, and feature mode.
+%
+% Outputs:
+%   X_in - D x N phase-normalized input feature matrix.
+%   r_vec - 1 x N phase-rotation vector.
 
     if nargin < 4 || isempty(featMode)
         featMode = "full";

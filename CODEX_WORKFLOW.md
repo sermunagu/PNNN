@@ -66,6 +66,14 @@ Dime qué comando ejecuto yo para probarlo.
 
 ---
 
+## Estilo para ficheros MATLAB nuevos
+
+Cuando Codex cree un script o función MATLAB nuevo, debe añadir una cabecera breve en inglés. La cabecera debe explicar qué hace el fichero, qué lugar ocupa en el flujo PNNN y cualquier entrada/salida o restricción importante si procede.
+
+Evitar cabeceras largas o especulativas. Los comentarios nuevos de código y cabeceras de fichero deben preferirse en inglés.
+
+---
+
 ## Comandos habituales del usuario
 
 Entrenamiento:

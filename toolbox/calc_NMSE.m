@@ -1,4 +1,17 @@
 function NMSE = calc_NMSE(x, y, fs)
+% calc_NMSE - Estimate frequency-domain NMSE over the configured bandwidth.
+%
+% This utility computes a Welch-spectrum error ratio between a reference
+% signal and a compared signal. It is retained as a general toolbox helper
+% for result analysis around the PNNN/GMP workflows.
+%
+% Inputs:
+%   x, y - Complex signals to compare.
+%   fs - Sampling frequency in Hz.
+%
+% Outputs:
+%   NMSE - Frequency-domain NMSE in dB.
+
 wlen = 8e3;
 olap = 5e3;
 nfft = 8e3;

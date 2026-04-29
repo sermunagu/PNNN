@@ -1,7 +1,18 @@
 function [res, fit] = GMP_blockFitEvaluate(x, y, idxTrain, idxTest, rManagerGMP, cfg, label)
-% GMP_blockFitEvaluate Fits and evaluates a GMP basis without materializing
-% the full U matrix. It accumulates normal equations by row blocks and then
-% predicts train/test by blocks.
+% GMP_blockFitEvaluate - Fit and evaluate a GMP basis by row blocks.
+%
+% This helper supports the PNNN baseline comparison by avoiding full GMP
+% matrix materialization, accumulating normal equations by blocks, and
+% predicting TRAIN+VAL/TEST rows by blocks.
+%
+% Inputs:
+%   x, y - Full modeled-block input and output signals.
+%   idxTrain, idxTest - Full-domain rows for fitting and evaluation.
+%   rManagerGMP, cfg, label - GMP basis manager, config, and log label.
+%
+% Outputs:
+%   res - Struct with pinv/ridge NMSE metrics and diagnostics.
+%   fit - Struct with selected support and coefficient fits.
 
 if nargin < 7 || isempty(label)
     label = 'GMP block';

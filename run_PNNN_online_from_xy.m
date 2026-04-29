@@ -1,3 +1,13 @@
+% Script: run_PNNN_online_from_xy
+%
+% This script loads a saved PNNN deploy package, builds phase-normalized
+% inputs from an XY measurement file, and saves the online model output for
+% the configured inference workflow.
+%
+% Notes:
+%   The main saved output is yhat, with aliases documented in the deploy
+%   metadata; X/Y keep the local modeled-block convention.
+
 clear; clc; close all;
 scriptDir = fileparts(mfilename('fullpath'));
 if isempty(scriptDir), scriptDir = pwd; end

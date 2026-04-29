@@ -1,12 +1,21 @@
 function [idxTrain, idxVal, idxTest] = splitTrainValTest( ...
     dataDivision, inputMtxAll, x_in_full, M, trainRatio, valRatio, testRatio, seed)
-% SPLITTRAINVALTEST Divide índices TRAIN / VAL / TEST con alineamiento temporal.
+% splitTrainValTest - Create TRAIN/VAL/TEST indices for PNNN datasets.
 %
-% Compatible con la llamada antigua:
-%   splitTrainValTest(dataDivision, inputMtxAll, x_in_full, M)
-% que usa 70/15/15 y seed=42.
-% Con los datasets nuevos de extensión periódica, Ns=N. También acepta
-% datasets antiguos con Ns=N-M.
+% This function supports random, contiguous, and amplitude-stratified splits
+% while keeping indices aligned with the phase-normalized dataset rows used
+% by the offline training flow.
+%
+% Inputs:
+%   dataDivision - Split strategy name.
+%   inputMtxAll, x_in_full, M - Dataset matrix and original input context.
+%   trainRatio, valRatio, testRatio, seed - Split proportions and RNG seed.
+%
+% Outputs:
+%   idxTrain, idxVal, idxTest - Row indices for each split.
+%
+% Notes:
+%   The legacy four-argument call still defaults to 70/15/15 and seed 42.
 
     if nargin < 5 || isempty(trainRatio), trainRatio = 0.70; end
     if nargin < 6 || isempty(valRatio),   valRatio   = 0.15; end

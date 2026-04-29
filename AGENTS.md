@@ -120,6 +120,16 @@ Codex no debe lanzar estos comandos salvo permiso explícito.
 
 ---
 
+## Estilo de cabeceras MATLAB
+
+- Any new MATLAB script/function created by Codex must include a concise English header.
+- The header should contain around three explanatory lines describing what the file/function does and where it fits in the PNNN flow.
+- If useful, add short `Inputs`, `Outputs` or `Notes` sections, but avoid long verbose documentation.
+- Headers must be technically accurate and must not include speculative explanations.
+- Prefer English for code comments and file headers from now on.
+
+---
+
 ## Sobre documentación
 
 Cuando se cambie comportamiento del código, actualizar documentación relacionada si existe:

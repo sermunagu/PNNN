@@ -1,10 +1,18 @@
 function [X_in, Y_out, r_vec] = buildPhaseNormDataset(x, y, M, orders, featMode)
-% buildPhaseNormDataset Builds the sparse/phase-normalized NN dataset.
+% buildPhaseNormDataset - Build the phase-normalized PNNN dataset.
 %
-% X_in is D x N, Y_out is 2 x N and r_vec is 1 x N.
-% r_vec(k) = conj(x(n))/abs(x(n)) rotates the current input sample to zero
-% phase; reconstruction is y(n) = conj(r_vec(k)) * y_rot(k).
-% Memory taps use periodic extension: x(n), x(n-1), ..., x(n-M).
+% This function creates input features, rotated two-channel targets, and
+% phase rotations used by the offline PNNN training flow. Memory taps use
+% periodic extension: x(n), x(n-1), ..., x(n-M).
+%
+% Inputs:
+%   x, y - Modeled-block input and output signals under the local X/Y convention.
+%   M, orders, featMode - Memory depth, nonlinear orders, and feature mode.
+%
+% Outputs:
+%   X_in - D x N phase-normalized input feature matrix.
+%   Y_out - 2 x N real/imag target matrix in the rotated frame.
+%   r_vec - 1 x N phase-rotation vector for reconstruction.
 
     if nargin < 5 || isempty(featMode)
         featMode = "full";

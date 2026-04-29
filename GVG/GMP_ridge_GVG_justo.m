@@ -1,14 +1,19 @@
 function [res, rManagerGMP, fitGMP] = GMP_ridge_GVG_justo(x, y, idxTrainVal_short, idxTest_short, M, rManagerGMP, cfg)
-% GMP_ridge_GVG_justo (robusta)
-% Ajusta coeficientes de un GMP sobre TRAIN+VAL (mismo split que la NN)
-% y evalúa en TEST, usando la misma base de regresores.
+% GMP_ridge_GVG_justo - Evaluate GMP on the same split used by PNNN.
 %
-% x,y                : señales COMPLETAS (longitud N)
-% idxTrainVal_short  : índices en dominio NN para TRAIN+VAL
-% idxTest_short      : índices en dominio NN para TEST
-% M                  : retardos del dataset NN
-% rManagerGMP        : (opcional) base GMP ya construida. Si [], se crea con TRAIN+VAL
-% cfg                : struct con Qpmax,Qnmax,Pmax,lambda1,lambda2
+% This function maps PNNN TRAIN+VAL/TEST indices to the full signal domain,
+% fits a GMP baseline by blocks, and returns pinv/ridge NMSE metrics on the
+% same split used by the offline neural model.
+%
+% Inputs:
+%   x, y - Full modeled-block input and output signals.
+%   idxTrainVal_short, idxTest_short - PNNN-domain split indices.
+%   M, rManagerGMP, cfg - PNNN memory depth, optional GMP basis, and GMP config.
+%
+% Outputs:
+%   res - Struct with GMP metrics and split metadata.
+%   rManagerGMP - Prepared GMP regressor manager.
+%   fitGMP - Fitted GMP coefficient/support information.
 
     if nargin < 7 || isempty(cfg), cfg = struct(); end
     if ~isfield(cfg,'Qpmax'),   cfg.Qpmax = 50; end

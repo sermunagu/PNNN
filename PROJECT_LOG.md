@@ -300,6 +300,168 @@ Pendiente:
 
 ---
 
+### 2026-04-29 — Soporte opcional de magnitude pruning en PNNN
+
+Objetivo:
+- Añadir una primera versión controlada de pruning por magnitud no estructurado en `train_PNNN_offline.m`, desactivada por defecto.
+
+Archivos modificados:
+- `train_PNNN_offline.m`
+- `PROJECT_LOG.md`
+
+Cambios realizados:
+- Se añadió `cfg.pruning` con activación opcional, sparsity global, control de biases, fine-tuning y congelación de pesos podados.
+- El pruning se aplica después del entrenamiento base con `trainnet` y antes de la evaluación/guardado.
+- Se implementó selección global de pesos de menor magnitud y máscaras binarias por parámetro.
+- Se añadió un custom fine-tune loop pequeño para mantener los pesos podados en cero mediante máscaras de gradiente y re-aplicación de pesos.
+- Se guarda metadata de pruning junto al modelo y deploy generados por el entrenamiento.
+
+Comandos ejecutados por Codex:
+- Lectura de `train_PNNN_offline.m` y funciones de `toolbox/`.
+- Búsquedas/inspecciones ligeras de flujo de entrenamiento.
+
+Comandos que debe ejecutar el usuario:
+- Para probar sin pruning: `matlab -batch "train_PNNN_offline"`.
+- Para probar pruning: activar `cfg.pruning.enabled = true` y ajustar `cfg.pruning.sparsity` antes de ejecutar el entrenamiento manualmente.
+
+Resultados:
+- No se ejecutó entrenamiento.
+- No se generaron métricas nuevas.
+- No se crearon `.mat`, `.fig`, `measurements/`, `results/` ni `generated_outputs/` desde Codex.
+
+Pendiente:
+- Validar en MATLAB que el custom fine-tune loop es compatible con la versión local de Deep Learning Toolbox.
+- Registrar métricas reales en `RESULTS_INDEX.md` solo cuando el usuario ejecute entrenamientos y comparta resultados.
+
+---
+
+### 2026-04-29 — Modularización y endurecimiento del pruning PNNN
+
+Objetivo:
+- Revisar conceptualmente la primera implementación de magnitude pruning y mover la lógica auxiliar fuera de `train_PNNN_offline.m`.
+
+Archivos modificados:
+- `train_PNNN_offline.m`
+- `PROJECT_LOG.md`
+
+Archivos nuevos:
+- `toolbox/pruning/validatePruningConfig.m`
+- `toolbox/pruning/initPruningStats.m`
+- `toolbox/pruning/createMagnitudePruningMasks.m`
+- `toolbox/pruning/applyLearnableMasks.m`
+- `toolbox/pruning/checkPruningMaskIntegrity.m`
+- `toolbox/pruning/fineTunePrunedNetwork.m`
+
+Cambios realizados:
+- Se confirmó que `train_PNNN_offline.m` usa `addpath(genpath(scriptDir))`, por lo que `toolbox/pruning/` queda en el path sin tocar la configuración de rutas.
+- Se dejó `train_PNNN_offline.m` como orquestador: define `cfg.pruning`, llama a funciones de pruning, evalúa y guarda metadata.
+- Se separaron la validación de configuración, creación global de máscaras, aplicación de máscaras, verificación de integridad y fine-tuning en funciones dedicadas.
+- Se añadió `cfg.pruning.fineTuneInitialLearnRate`, inicializado desde `cfg.InitialLearnRate`.
+- Se añadió verificación explícita de integridad de máscara después de aplicar pruning y después del fine-tuning.
+- El fine-tuning guarda `bestNet` según validation loss, devuelve la mejor red y re-aplica máscara antes de devolver.
+- Se revirtieron cambios cosméticos no relacionados con pruning detectados en mensajes GMP.
+
+Comandos ejecutados por Codex:
+- `git status --short`
+- `git diff --stat`
+- Lectura de `train_PNNN_offline.m`, `PROJECT_LOG.md` y `toolbox/`.
+
+Comandos que debe ejecutar el usuario:
+- Para validar sintaxis/compatibilidad en MATLAB sin entrenamiento largo, usar una prueba controlada reduciendo épocas y datos de forma manual.
+- Para validar comportamiento completo: activar `cfg.pruning.enabled = true`, ajustar `cfg.pruning.sparsity` y ejecutar `matlab -batch "train_PNNN_offline"`.
+
+Resultados:
+- No se ejecutó MATLAB.
+- No se ejecutaron entrenamientos ni inferencias.
+- No se generaron resultados, modelos ni deploy packages nuevos.
+
+Pendiente:
+- Validar en MATLAB la compatibilidad local de `dlnetwork.Learnables`, `adamupdate` y el custom fine-tune loop.
+- Actualizar `RESULTS_INDEX.md` solo cuando existan métricas/modelos reales generados por el usuario.
+
+---
+
+### 2026-04-30 — Cabeceras MATLAB y registro de resultados pruning
+
+Objetivo:
+- Añadir una regla persistente de cabeceras MATLAB en inglés, documentar ficheros MATLAB principales y registrar resultados de PNNN sin pruning y con pruning 30%.
+
+Archivos modificados:
+- `AGENTS.md`
+- `CODEX_WORKFLOW.md`
+- `train_PNNN_offline.m`
+- `run_PNNN_online_from_xy.m`
+- `toolbox/buildPhaseNormDataset.m`
+- `toolbox/buildPhaseNormInput.m`
+- `toolbox/splitTrainValTest.m`
+- `toolbox/calc_NMSE.m`
+- `toolbox/pruning/*.m`
+- `GVG/GMP_ridge_GVG.m`
+- `GVG/GMP_ridge_GVG_justo.m`
+- `GVG/GMP_blockFitEvaluate.m`
+- `GVG/GMP_blockPredict.m`
+- `RESULTS_INDEX.md`
+- `PROJECT_LOG.md`
+
+Cambios realizados:
+- Se añadió una regla de estilo para que nuevos scripts/funciones MATLAB creados por Codex incluyan cabecera breve en inglés.
+- Se añadieron cabeceras explicativas en inglés a los scripts principales, funciones phase-normalized, funciones de pruning y funciones GMP claras usadas como baseline.
+- Se documentaron en `RESULTS_INDEX.md` los resultados de `experiment20260429T134032_xy` sin pruning y con pruning global de magnitud al 30%.
+- Se registró que el pruning 30% mantiene integridad de máscara y no degrada NMSE respecto al modelo sin pruning.
+
+Comandos ejecutados por Codex:
+- Lectura de documentación y ficheros MATLAB relevantes.
+- `git status --short`
+- `git diff --stat`
+
+Comandos que debe ejecutar el usuario:
+- Ninguno para esta intervención documental.
+
+Resultados:
+- No se ejecutó MATLAB.
+- No se ejecutaron entrenamientos ni inferencias.
+- No se modificó lógica MATLAB, firmas, nombres de variables, features, split, `mappingMode` ni normalización.
+- No se generaron medidas, resultados, modelos, figuras ni deploy packages nuevos.
+
+Pendiente:
+- Validar/commitear conjuntamente esta documentación y la intervención previa de pruning cuando el usuario lo decida.
+
+---
+
+### 2026-04-30 — Resumen final por consola en entrenamiento PNNN
+
+Objetivo:
+- Mejorar la presentación final por consola de `train_PNNN_offline.m` sin cambiar cálculos, entrenamiento, pruning ni guardado de artefactos.
+
+Archivos modificados:
+- `train_PNNN_offline.m`
+- `toolbox/printFinalPNNNSummary.m`
+- `PROJECT_LOG.md`
+
+Cambios realizados:
+- Se añadió `printFinalPNNNSummary` para imprimir un resumen compacto al final del entrenamiento offline.
+- El resumen incluye medida, mapping, arquitectura PNNN, split, NMSE, PAPR, estado de pruning, integridad de máscaras, baselines GMP y rutas de salida.
+- La impresión se ejecuta después de guardar `model.mat`, `deploy_package.mat`, `predictions.mat` y `metadata.txt`.
+- El resumen se adapta a pruning activado/desactivado y a métricas GMP ausentes mostrando `N/A`.
+
+Comandos ejecutados por Codex:
+- Lectura de `train_PNNN_offline.m` y `PROJECT_LOG.md`.
+- Verificaciones Git y auditoría de artefactos antes de commit.
+
+Comandos que debe ejecutar el usuario:
+- Ninguno para esta intervención de reporting.
+
+Resultados:
+- No se ejecutó MATLAB.
+- No se ejecutaron entrenamientos ni inferencias.
+- No se cambiaron cálculos de NMSE, entrenamiento, pruning, fine-tuning, selección de `bestNet`, features, split, `mappingMode` ni normalización.
+- No se generaron medidas, resultados, modelos, figuras ni deploy packages nuevos.
+
+Pendiente:
+- Validar visualmente el nuevo bloque de consola en la siguiente ejecución manual de `matlab -batch "train_PNNN_offline"`.
+
+---
+
 ## Plantilla para futuras entradas
 
 Copiar y rellenar esta plantilla después de cada intervención relevante:

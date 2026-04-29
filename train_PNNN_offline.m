@@ -1,3 +1,13 @@
+% Script: train_PNNN_offline
+%
+% This script trains the offline phase-normalized PNNN model, evaluates it
+% on the configured split, and saves model, prediction, deploy, and metadata
+% artifacts under the configured results folder.
+%
+% Notes:
+%   X and Y follow the local modeled-block convention; mappingMode must not
+%   be interpreted automatically as a PA-forward physical direction.
+
 clear; clc; close all;
 scriptDir = fileparts(mfilename('fullpath'));
 if isempty(scriptDir), scriptDir = pwd; end
@@ -37,6 +47,15 @@ cfg.ValidationPatience  = 100;
 cfg.trainingPlots       = 'training-progress'; % 'training-progress' o 'none'
 cfg.verbose             = true;
 
+cfg.pruning.enabled = true;
+cfg.pruning.sparsity = 0.3;        % fracción entre 0 y 1
+cfg.pruning.scope = "global";      % primera versión: global
+cfg.pruning.includeBias = false;
+cfg.pruning.fineTuneEnabled = true;
+cfg.pruning.fineTuneEpochs = 10;
+cfg.pruning.fineTuneInitialLearnRate = cfg.InitialLearnRate;
+cfg.pruning.freezePruned = true;
+
 cfg.runGMPBaseline = true;
 cfg.runGMPJusto = true;
 cfg.gmpJusto = struct();
@@ -51,6 +70,7 @@ cfg.gmpJusto.maxPopulation = 100;
 cfg.gmpJusto.selectionMode = 'omp';
 
 cfg.skipIfExists = false;
+cfg.pruning = validatePruningConfig(cfg.pruning);
 
 %% ======================= TAGS DE EXPERIMENTO =======================
 dateTag  = string(datestr(now, 'yyyymmdd'));
@@ -249,6 +269,26 @@ opts = trainingOptions("adam", ...
 
 [netDPD, info] = trainnet(inputMtxTrainN, outputMtxTrainN, layers, "mse", opts);
 
+pruningStats = initPruningStats(cfg.pruning);
+pruningState = struct();
+pruningFineTuneInfo = struct();
+
+if cfg.pruning.enabled
+    fprintf("\n--- Magnitude pruning global ---\n");
+    [pruningState, pruningStats] = createMagnitudePruningMasks(netDPD, cfg.pruning);
+    netDPD = applyLearnableMasks(netDPD, pruningState.masks);
+    [~, pruningStats] = checkPruningMaskIntegrity( ...
+        netDPD, pruningState, pruningStats, "after_pruning");
+
+    if cfg.pruning.fineTuneEnabled && cfg.pruning.fineTuneEpochs > 0
+        [netDPD, pruningFineTuneInfo, pruningStats] = fineTunePrunedNetwork( ...
+            netDPD, inputMtxTrainN, outputMtxTrainN, inputMtxValN, outputMtxValN, ...
+            cfg, pruningState, pruningStats);
+        [~, pruningStats] = checkPruningMaskIntegrity( ...
+            netDPD, pruningState, pruningStats, "after_fine_tune");
+    end
+end
+
 saveTrainingProgressFigure(info, expFolder);
 
 %% ======================= EVALUACIÓN =======================
@@ -324,6 +364,29 @@ metadata.PAPR_trainVal_NN = PAPR_trainVal_NN;
 metadata.PAPR_trainVal_ref = PAPR_trainVal_ref;
 metadata.PAPR_test_NN = PAPR_test_NN;
 metadata.PAPR_test_ref = PAPR_test_ref;
+metadata.pruning = pruningStats;
+metadata.pruning_enabled = pruningStats.enabled;
+metadata.pruning_sparsityTarget = pruningStats.sparsityTarget;
+metadata.pruning_sparsityActual = pruningStats.sparsityActual;
+metadata.pruning_scope = pruningStats.scope;
+metadata.pruning_includeBias = pruningStats.includeBias;
+metadata.pruning_freezePruned = pruningStats.freezePruned;
+metadata.pruning_totalPodableParams = pruningStats.totalPodableParams;
+metadata.pruning_numPrunedParams = pruningStats.numPrunedParams;
+metadata.pruning_numRemainingParams = pruningStats.numRemainingParams;
+metadata.pruning_fineTuneEnabled = pruningStats.fineTuneEnabled;
+metadata.pruning_fineTuneRun = pruningStats.fineTuneRun;
+metadata.pruning_fineTuneEpochs = pruningStats.fineTuneEpochs;
+metadata.pruning_fineTuneInitialLearnRate = pruningStats.fineTuneInitialLearnRate;
+metadata.pruning_fineTuneBestEpoch = pruningStats.fineTuneBestEpoch;
+metadata.pruning_fineTuneBestValidationLoss = pruningStats.fineTuneBestValidationLoss;
+metadata.pruning_fineTuneFinalValidationLoss = pruningStats.fineTuneFinalValidationLoss;
+metadata.pruning_fineTuneFinalTrainLoss = pruningStats.fineTuneFinalTrainLoss;
+metadata.pruning_maskViolationCount = pruningStats.maskViolationCount;
+metadata.pruning_maskViolationMaxAbs = pruningStats.maskViolationMaxAbs;
+metadata.pruning_maskIntegrityOk = pruningStats.maskIntegrityOk;
+metadata.pruning_maskIntegrityStage = pruningStats.maskIntegrityStage;
+metadata.pruning_parameterNames = strjoin(string(pruningStats.parameterNames), ", ");
 metadata.timeStamp = datestr(now);
 metadata.description = sprintf("NN-DPD phase-normalized offline. mapping=%s, temporal=periodic, featMode=%s, M=%d, orders=%s, NMSE_test=%.2f dB.", ...
     cfg.mappingMode, cfg.featMode, cfg.M, mat2str(cfg.orders), NMSE_test);
@@ -347,17 +410,38 @@ deploy.cfgDeploy.outputFieldName = primaryOutputField; % campo legado
 deploy.cfgDeploy.primaryOutputField = primaryOutputField;
 deploy.cfgDeploy.aliasOutputFields = aliasOutputFields;
 deploy.cfgDeploy.fs = fsUsed;
+deploy.pruningStats = pruningStats;
+deploy.pruningState = pruningState;
 
 save(modelFile, "netDPD", "metadata", "info", "normStats", "cfg", ...
-    "resGMP", "NMSE_val_GMP", "NMSE_val_ridge_1e3", "NMSE_val_ridge_1e4", "-v7.3");
+    "resGMP", "NMSE_val_GMP", "NMSE_val_ridge_1e3", "NMSE_val_ridge_1e4", ...
+    "pruningStats", "pruningState", "pruningFineTuneInfo", "-v7.3");
 save(predFile, "est_trainVal", "ref_trainVal", "est_test", "ref_test", ...
     "idxTrain", "idxVal", "idxTest", "idxTrainVal", "-v7.3");
 save(deployFile, "deploy", "metadata", "-v7.3");
 
 exportMetadataTxt(txtFile, metadata);
 
-fprintf("\nModelo guardado en: %s\n", modelFile);
-fprintf("Paquete de despliegue guardado en: %s\n", deployFile);
+finalSummary = struct();
+finalSummary.cfg = cfg;
+finalSummary.NMSE_trainVal = NMSE_trainVal;
+finalSummary.NMSE_test = NMSE_test;
+finalSummary.PAPR_trainVal_NN = PAPR_trainVal_NN;
+finalSummary.PAPR_trainVal_ref = PAPR_trainVal_ref;
+finalSummary.PAPR_test_NN = PAPR_test_NN;
+finalSummary.PAPR_test_ref = PAPR_test_ref;
+finalSummary.pruningStats = pruningStats;
+finalSummary.pruningFineTuneInfo = pruningFineTuneInfo;
+finalSummary.NMSE_val_GMP = NMSE_val_GMP;
+finalSummary.NMSE_val_ridge_1e3 = NMSE_val_ridge_1e3;
+finalSummary.NMSE_val_ridge_1e4 = NMSE_val_ridge_1e4;
+finalSummary.resGMP = resGMP;
+finalSummary.modelFile = modelFile;
+finalSummary.deployFile = deployFile;
+finalSummary.predFile = predFile;
+finalSummary.txtFile = txtFile;
+
+printFinalPNNNSummary(finalSummary);
 
 %% ======================= FUNCIONES LOCALES =======================
 function [x_in, y_out] = selectXYByMapping(x, y, mappingMode)
@@ -501,7 +585,7 @@ if fid < 0
     error("No se pudo abrir metadata.txt para escritura: %s", txtFile);
 end
 
-exclude = ["muX", "sigmaX", "idxTrain", "idxVal", "idxTest", "muY", "sigmaY"];
+exclude = ["muX", "sigmaX", "idxTrain", "idxVal", "idxTest", "muY", "sigmaY", "pruning"];
 fields = fieldnames(metadata);
 
 for i = 1:numel(fields)
@@ -521,6 +605,8 @@ for i = 1:numel(fields)
         valStr = value;
     elseif isstring(value)
         valStr = char(value);
+    elseif islogical(value)
+        valStr = mat2str(value);
     else
         valStr = "[unsupported datatype]";
     end

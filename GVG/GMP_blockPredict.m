@@ -1,5 +1,16 @@
 function yhat = GMP_blockPredict(x, rManagerGMP, support, h, blockSize, rows)
-% GMP_blockPredict Predicts GMP output by row blocks without materializing U.
+% GMP_blockPredict - Predict GMP output by row blocks.
+%
+% This helper evaluates the selected GMP regressors without materializing
+% the full regression matrix, supporting memory-safe GMP baselines for PNNN.
+%
+% Inputs:
+%   x - Full modeled-block input signal.
+%   rManagerGMP, support, h - GMP basis manager, selected regressors, coefficients.
+%   blockSize, rows - Block length and optional full-domain rows to evaluate.
+%
+% Outputs:
+%   yhat - GMP prediction for the requested rows.
 
 x = x(:);
 N = numel(x);
