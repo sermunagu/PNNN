@@ -483,13 +483,6 @@ end
 layers = [layers fullyConnectedLayer(2, Name="fcOut")];
 end
 
-function yhat = predictPhaseNorm(netDPD, inputMtxN, normStats, r_sel)
-predN = predict(netDPD, inputMtxN);
-pred = predN .* normStats.sigmaY + normStats.muY;
-y_rot = pred(:,1) + 1j*pred(:,2);
-yhat = conj(r_sel(:)) .* y_rot(:);
-end
-
 function fields = inputFieldCandidatesFromMapping(mappingMode)
 switch string(mappingMode)
     case "xy_forward"

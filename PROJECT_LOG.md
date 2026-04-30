@@ -501,6 +501,47 @@ Pendiente:
 
 ---
 
+### 2026-04-30 — Refactor fase 2 de funciones phase-normalized
+
+Objetivo:
+- Organizar las funciones relacionadas con la NN phase-normalized dentro de `toolbox/phase_norm/` sin cambiar lógica.
+
+Archivos movidos:
+- `toolbox/buildPhaseNormDataset.m` -> `toolbox/phase_norm/buildPhaseNormDataset.m`
+- `toolbox/buildPhaseNormInput.m` -> `toolbox/phase_norm/buildPhaseNormInput.m`
+
+Archivos nuevos:
+- `toolbox/phase_norm/predictPhaseNorm.m`
+
+Archivos modificados:
+- `train_PNNN_offline.m`
+- `README.md`
+- `README.txt`
+- `PROJECT_LOG.md`
+
+Cambios realizados:
+- Se extrajo `predictPhaseNorm` desde `train_PNNN_offline.m` manteniendo la firma exacta.
+- Se mantuvieron sin cambios las llamadas existentes a `buildPhaseNormDataset`, `buildPhaseNormInput` y `predictPhaseNorm`.
+- Se actualizaron rutas operativas en `README.md` y `README.txt`.
+- No se cambiaron features, split, `mappingMode`, normalización phase-normalized ni semántica X/Y.
+
+Comandos ejecutados por Codex:
+- Auditoría estática de referencias y contenido.
+- Verificaciones Git ligeras.
+
+Comandos que debe ejecutar el usuario:
+- Ninguno para esta intervención; no se ejecutó MATLAB.
+
+Resultados:
+- No se ejecutó MATLAB.
+- No se ejecutaron entrenamientos ni inferencias.
+- No se generaron medidas, resultados, modelos, figuras ni deploy packages nuevos.
+
+Pendiente:
+- Validar en MATLAB en la siguiente ejecución manual que `addpath(genpath(scriptDir))` resuelve correctamente `toolbox/phase_norm/`.
+
+---
+
 ## Plantilla para futuras entradas
 
 Copiar y rellenar esta plantilla después de cada intervención relevante:

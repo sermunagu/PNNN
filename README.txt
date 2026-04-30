@@ -20,8 +20,9 @@ Scripts principales
   lee un nuevo fichero x/y, aplica la red y guarda la señal estimada.
 - legacy/main.m: flujo histórico monolítico de un experimento.
 - legacy/main_bucle.m: flujo histórico de barrido de activaciones y arquitecturas.
-- toolbox/buildPhaseNormDataset.m: constructor compartido de features.
-- toolbox/buildPhaseNormInput.m: constructor de features sin target para online.
+- toolbox/phase_norm/buildPhaseNormDataset.m: constructor compartido de features.
+- toolbox/phase_norm/buildPhaseNormInput.m: constructor de features sin target para online.
+- toolbox/phase_norm/predictPhaseNorm.m: reconstrucción compleja de la predicción phase-normalized.
 - toolbox/splitTrainValTest.m: particionado train/val/test reproducible.
 
 Convenciones
