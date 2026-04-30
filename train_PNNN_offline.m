@@ -15,7 +15,7 @@ else
     clear;
     pnnn_cfgOverrides = struct();
 end
-clc; close all;
+close all;
 scriptDir = fileparts(mfilename('fullpath'));
 if isempty(scriptDir), scriptDir = pwd; end
 addpath(genpath(scriptDir));
@@ -54,6 +54,8 @@ cfg.ValidationPatience  = 100;
 cfg.trainingPlots       = 'training-progress'; % 'training-progress' o 'none'
 cfg.verbose             = true;
 
+cfg.runtime.clearCommandWindow = true;
+
 cfg.pruning.enabled = true;
 cfg.pruning.sparsity = 0.3;        % fracción entre 0 y 1
 cfg.pruning.scope = "global";      % primera versión: global
@@ -78,6 +80,9 @@ cfg.gmpJusto.selectionMode = 'omp';
 
 cfg.skipIfExists = false;
 cfg = applyConfigOverrides(cfg, pnnn_cfgOverrides);
+if cfg.runtime.clearCommandWindow
+    clc;
+end
 cfg.pruning = validatePruningConfig(cfg.pruning);
 
 %% ======================= TAGS DE EXPERIMENTO =======================

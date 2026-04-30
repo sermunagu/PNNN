@@ -14,6 +14,9 @@ addpath(genpath(repoRoot));
 %% ======================= SWEEP CONFIG =======================
 sparsityList = [0.0 0.1 0.3 0.5 0.7];
 fineTuneEpochs = 10;
+% Quick validation:
+% sparsityList = [0.0 0.3];
+% fineTuneEpochs = 20;
 includeBias = false;
 freezePruned = true;
 pruningScope = "global";
@@ -85,7 +88,8 @@ for sweepIdx = 1:numel(sparsityList)
 end
 
 sweepSummary = struct2table(sweepRows);
-disp(sweepSummary);
+sweepSummaryCompact = buildSweepSummaryCompact(sweepSummary);
+disp(sweepSummaryCompact);
 exportSweepSummary(sweepSummary, sweepFolder);
 
 fprintf('\nSweep summary saved in: %s\n', sweepFolder);
@@ -97,6 +101,7 @@ function cfgOverrides = buildSweepOverrides(measurementName, runResultsRoot, ...
 cfgOverrides = struct();
 cfgOverrides.measfilename = measurementName;
 cfgOverrides.resultsRoot = runResultsRoot;
+cfgOverrides.runtime.clearCommandWindow = false;
 
 cfgOverrides.pruning = struct();
 cfgOverrides.pruning.sparsity = sparsity;
@@ -153,6 +158,11 @@ elseif isfield(metadata, 'pruning')
     pruningStats = metadata.pruning;
 end
 
+pruningEnabledKnown = hasScalarField(metadata, 'pruning_enabled') || ...
+    hasScalarField(pruningStats, 'enabled');
+maskIntegrityKnown = hasScalarField(metadata, 'pruning_maskIntegrityOk') || ...
+    hasScalarField(pruningStats, 'maskIntegrityOk');
+
 row.Description = stringField(metadata, 'description', row.Description);
 row.Measurement = stringField(metadata, 'measfilename', row.Measurement);
 row.MappingMode = stringField(metadata, 'mappingMode', row.MappingMode);
@@ -172,6 +182,8 @@ row.RemainingParams = numericField(metadata, 'pruning_numRemainingParams', ...
     numericField(pruningStats, 'numRemainingParams', row.RemainingParams));
 row.MaskIntegrityOK = logicalField(metadata, 'pruning_maskIntegrityOk', ...
     logicalField(pruningStats, 'maskIntegrityOk', row.MaskIntegrityOK));
+row.MaskIntegrityStatus = maskIntegrityStatus( ...
+    row.PruningEnabled, pruningEnabledKnown, row.MaskIntegrityOK, maskIntegrityKnown);
 row.MaskViolationCount = numericField(metadata, 'pruning_maskViolationCount', ...
     numericField(pruningStats, 'maskViolationCount', row.MaskViolationCount));
 row.MaskViolationMaxAbs = numericField(metadata, 'pruning_maskViolationMaxAbs', ...
@@ -207,6 +219,7 @@ row.TotalPodableParams = NaN;
 row.PrunedParams = NaN;
 row.RemainingParams = NaN;
 row.MaskIntegrityOK = false;
+row.MaskIntegrityStatus = "UNKNOWN";
 row.MaskViolationCount = NaN;
 row.MaskViolationMaxAbs = NaN;
 row.NMSE_TrainVal_dB = NaN;
@@ -233,6 +246,30 @@ catch ME
 end
 
 exportSweepSummaryTableFigure(sweepSummary, sweepFolder);
+end
+
+function compactTable = buildSweepSummaryCompact(sweepSummary)
+compactTable = table();
+compactTable.SparsityTarget_pct = tableColumnOrDefault(sweepSummary, ...
+    'SparsityTarget_pct', NaN(height(sweepSummary), 1));
+compactTable.SparsityActual_pct = tableColumnOrDefault(sweepSummary, ...
+    'SparsityActual_pct', NaN(height(sweepSummary), 1));
+compactTable.PrunedParams = tableColumnOrDefault(sweepSummary, ...
+    'PrunedParams', NaN(height(sweepSummary), 1));
+compactTable.RemainingParams = tableColumnOrDefault(sweepSummary, ...
+    'RemainingParams', NaN(height(sweepSummary), 1));
+compactTable.NMSE_TrainVal_dB = tableColumnOrDefault(sweepSummary, ...
+    'NMSE_TrainVal_dB', NaN(height(sweepSummary), 1));
+compactTable.NMSE_Test_dB = tableColumnOrDefault(sweepSummary, ...
+    'NMSE_Test_dB', NaN(height(sweepSummary), 1));
+compactTable.GainNMSE_Test_vs_Baseline_dB = tableColumnOrDefault( ...
+    sweepSummary, 'GainNMSE_Test_vs_Baseline_dB', NaN(height(sweepSummary), 1));
+compactTable.MaskIntegrityStatus = tableColumnOrDefault(sweepSummary, ...
+    'MaskIntegrityStatus', strings(height(sweepSummary), 1));
+compactTable.FineTuneEpochs = tableColumnOrDefault(sweepSummary, ...
+    'PruningFineTuneEpochs', NaN(height(sweepSummary), 1));
+compactTable.FineTuneBestEpoch = tableColumnOrDefault(sweepSummary, ...
+    'PruningFineTuneBestEpoch', NaN(height(sweepSummary), 1));
 end
 
 function value = stringField(data, fieldName, defaultValue)
@@ -272,6 +309,39 @@ if islogical(rawValue) && isscalar(rawValue)
     value = rawValue;
 elseif isnumeric(rawValue) && isscalar(rawValue)
     value = logical(rawValue);
+end
+end
+
+function known = hasScalarField(data, fieldName)
+known = false;
+if ~isstruct(data) || ~isfield(data, fieldName)
+    return;
+end
+
+rawValue = data.(fieldName);
+known = isscalar(rawValue) && (islogical(rawValue) || isnumeric(rawValue));
+end
+
+function status = maskIntegrityStatus(pruningEnabled, pruningEnabledKnown, ...
+    maskIntegrityOk, maskIntegrityKnown)
+if ~pruningEnabledKnown
+    status = "UNKNOWN";
+elseif ~pruningEnabled
+    status = "N/A";
+elseif ~maskIntegrityKnown
+    status = "UNKNOWN";
+elseif maskIntegrityOk
+    status = "OK";
+else
+    status = "FAIL";
+end
+end
+
+function values = tableColumnOrDefault(summaryTable, columnName, defaultValues)
+if any(strcmp(summaryTable.Properties.VariableNames, columnName))
+    values = summaryTable.(columnName);
+else
+    values = defaultValues;
 end
 end
 

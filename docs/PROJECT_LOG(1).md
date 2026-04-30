@@ -658,40 +658,6 @@ Pendiente:
 
 ---
 
-### 2026-04-30 — Robustez UX del pruning sweep
-
-Objetivo:
-- Mejorar la legibilidad y robustez del reporting del pruning sweep tras una prueba rápida del usuario.
-
-Archivos modificados:
-- `train_PNNN_offline.m`
-- `experiments/run_PNNN_pruning_sweep.m`
-- `toolbox/reporting/exportSweepSummaryTableFigure.m`
-- `README.md`
-- `docs/PROJECT_LOG.md`
-
-Cambios realizados:
-- Se añadió `cfg.runtime.clearCommandWindow` para mantener `clc` en ejecuciones normales y desactivarlo desde el sweep.
-- Se añadió `sweepSummaryCompact` para imprimir por consola una tabla corta sin rutas largas.
-- Se añadió `MaskIntegrityStatus` con estados `N/A`, `OK`, `FAIL` o `UNKNOWN`.
-- Se reforzó la exportación visual con `exportapp` cuando esté disponible y fallback a una figura de texto no-UI.
-- No se cambiaron cálculos de entrenamiento, pruning/fine-tuning, NMSE, features, split, `mappingMode`, normalización ni semántica X/Y.
-
-Comandos ejecutados por Codex:
-- Validaciones Git ligeras.
-- Prueba MATLAB ligera con `which(...)`, sin ejecutar entrenamiento, inferencia ni sweep completo.
-
-Resultados:
-- No se ejecutaron entrenamientos.
-- No se ejecutó inferencia.
-- No se ejecutó el sweep completo.
-- No hay resultados definitivos nuevos; `docs/RESULTS_INDEX.md` no se actualizó.
-
-Pendiente:
-- Validar en la próxima ejecución real que la tabla visual se exporta sin warnings en el backend gráfico disponible.
-
----
-
 ## Plantilla para futuras entradas
 
 Copiar y rellenar esta plantilla después de cada intervención relevante:

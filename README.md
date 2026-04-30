@@ -75,6 +75,8 @@ Cada sweep genera una variable MATLAB nativa `sweepSummary` de tipo `table`, con
 - `sweep_summary.csv`
 - `sweep_summary.xlsx`, si `writetable` puede escribir Excel en el entorno MATLAB disponible.
 
+Por consola se imprime una vista compacta `sweepSummaryCompact`, sin descripciones largas ni rutas completas, para revisar rápidamente sparsity, NMSE, ganancia frente al baseline, estado de máscara y fine-tuning.
+
 La columna `GainNMSE_Test_vs_Baseline_dB` se calcula como `NMSE_baseline - NMSE_actual`; por tanto, valores positivos indican mejora de NMSE TEST respecto al baseline sin pruning.
 
 También intenta generar una tabla visual reducida para informes o presentaciones:
@@ -82,4 +84,4 @@ También intenta generar una tabla visual reducida para informes o presentacione
 - `sweep_summary_table.fig`
 - `sweep_summary_table.png`
 
-La exportación visual es opcional y no debe detener el sweep si MATLAB no puede crear figuras en modo batch. Todos estos archivos se escriben bajo `results/pruning_sweeps/<timestamp>/`, que no se versiona.
+La exportación visual es opcional y depende del backend gráfico de MATLAB disponible en modo batch. El script intenta usar `exportapp` para tablas UI y cae a una figura de texto si hace falta; cualquier fallo de esa salida visual no debe detener el sweep. Todos estos archivos se escriben bajo `results/pruning_sweeps/<timestamp>/`, que no se versiona.
