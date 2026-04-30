@@ -8,7 +8,14 @@
 %   X and Y follow the local modeled-block convention; mappingMode must not
 %   be interpreted automatically as a PA-forward physical direction.
 
-clear; clc; close all;
+if exist('cfgOverrides', 'var')
+    pnnn_cfgOverrides = cfgOverrides;
+    clear cfgOverrides;
+else
+    clear;
+    pnnn_cfgOverrides = struct();
+end
+clc; close all;
 scriptDir = fileparts(mfilename('fullpath'));
 if isempty(scriptDir), scriptDir = pwd; end
 addpath(genpath(scriptDir));
@@ -70,6 +77,7 @@ cfg.gmpJusto.maxPopulation = 100;
 cfg.gmpJusto.selectionMode = 'omp';
 
 cfg.skipIfExists = false;
+cfg = applyConfigOverrides(cfg, pnnn_cfgOverrides);
 cfg.pruning = validatePruningConfig(cfg.pruning);
 
 %% ======================= TAGS DE EXPERIMENTO =======================

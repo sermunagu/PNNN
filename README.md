@@ -21,6 +21,7 @@ El proyecto se llamaba antes `NN_DPD`. Ese nombre puede aparecer en rutas o resu
 - `toolbox/metrics/calc_NMSE.m`: métrica NMSE en frecuencia para análisis.
 - `toolbox/reporting/printFinalPNNNSummary.m`: resumen final por consola.
 - `toolbox/io/`: helpers de selección X/Y y metadata/deploy.
+- `experiments/run_PNNN_pruning_sweep.m`: barrido secuencial de sparsity para pruning.
 
 ## Documentación Interna
 
@@ -51,3 +52,34 @@ La normalización de fase usa `r = conj(x(n))/abs(x(n))`. La red predice `r*y(n)
 - Mantén `metadata.mappingMode`, `metadata.featMode`, ratios y `splitSeed` al guardar modelos.
 - El flujo online no reentrena y no necesita `y`: para `xy_forward` toma `x` como entrada, genera `yhat` y evita guardar la predicción bajo campos `x/xi`.
 - La señal candidata para laboratorio debe verificarse por script y por campos guardados. En el flujo actual, `run_PNNN_online_from_xy.m` guarda `yhat`/`yhat_all` como salida principal documentada.
+
+## Pruning Sweeps
+
+El script `experiments/run_PNNN_pruning_sweep.m` permite lanzar varios entrenamientos secuenciales con distintos valores de sparsity sin editar manualmente `train_PNNN_offline.m`.
+
+Desde la raíz del repo:
+
+```powershell
+matlab -batch "run('experiments/run_PNNN_pruning_sweep.m')"
+```
+
+El script entrena un modelo por cada valor de `sparsityList`, por lo que puede tardar bastante. Los resultados generados quedan bajo:
+
+```text
+results/pruning_sweeps/<timestamp>/
+```
+
+Cada sweep genera una variable MATLAB nativa `sweepSummary` de tipo `table`, con una fila por sparsity. Además, exporta esa tabla completa como:
+
+- `sweep_summary.mat`
+- `sweep_summary.csv`
+- `sweep_summary.xlsx`, si `writetable` puede escribir Excel en el entorno MATLAB disponible.
+
+La columna `GainNMSE_Test_vs_Baseline_dB` se calcula como `NMSE_baseline - NMSE_actual`; por tanto, valores positivos indican mejora de NMSE TEST respecto al baseline sin pruning.
+
+También intenta generar una tabla visual reducida para informes o presentaciones:
+
+- `sweep_summary_table.fig`
+- `sweep_summary_table.png`
+
+La exportación visual es opcional y no debe detener el sweep si MATLAB no puede crear figuras en modo batch. Todos estos archivos se escriben bajo `results/pruning_sweeps/<timestamp>/`, que no se versiona.

@@ -583,6 +583,81 @@ Pendiente:
 
 ---
 
+### 2026-04-30 — Automatización inicial de pruning sweep
+
+Objetivo:
+- Añadir una forma controlada de lanzar varios experimentos de pruning con distintas sparsities sin editar manualmente `train_PNNN_offline.m`.
+
+Archivos nuevos:
+- `experiments/run_PNNN_pruning_sweep.m`
+- `toolbox/io/applyConfigOverrides.m`
+
+Archivos modificados:
+- `train_PNNN_offline.m`
+- `README.md`
+- `docs/PROJECT_LOG.md`
+
+Cambios realizados:
+- Se añadió un mecanismo opcional de `cfgOverrides` que aplica valores externos sobre campos existentes de `cfg`.
+- Se añadió el script `experiments/run_PNNN_pruning_sweep.m` para ejecutar entrenamientos secuenciales y generar la tabla `sweepSummary`.
+- Se documentó en `README.md` cómo lanzar el sweep y dónde quedan los resultados.
+- No se cambiaron cálculos, entrenamiento base, pruning/fine-tuning, bestNet, features, split, `mappingMode`, normalización ni semántica X/Y.
+
+Comandos ejecutados por Codex:
+- Auditoría estática de configuración y rutas.
+- Validaciones Git y MATLAB ligeras, sin ejecutar entrenamientos ni inferencias.
+
+Resultados:
+- No se ejecutaron entrenamientos.
+- No se ejecutaron inferencias.
+- No hay resultados reales nuevos; `docs/RESULTS_INDEX.md` no se actualizó.
+
+Rutas esperadas cuando el usuario ejecute el sweep:
+- `results/pruning_sweeps/<timestamp>/sweep_summary.mat`
+- `results/pruning_sweeps/<timestamp>/sweep_summary.csv`
+- `results/pruning_sweeps/<timestamp>/sweep_summary.xlsx`, si el entorno permite exportar Excel.
+- `results/pruning_sweeps/<timestamp>/sweep_config.mat`
+- `results/pruning_sweeps/<timestamp>/sweep_config.txt`
+
+Pendiente:
+- Ejecutar manualmente el sweep si se quiere generar resultados reales y después registrar las métricas finales en `docs/RESULTS_INDEX.md`.
+
+---
+
+### 2026-04-30 — Reporting visual para pruning sweep
+
+Objetivo:
+- Mejorar la presentación del pruning sweep manteniendo `sweepSummary` como tabla MATLAB nativa y añadiendo una exportación visual opcional.
+
+Archivos nuevos:
+- `toolbox/reporting/exportSweepSummaryTableFigure.m`
+
+Archivos modificados:
+- `experiments/run_PNNN_pruning_sweep.m`
+- `README.md`
+- `docs/PROJECT_LOG.md`
+
+Cambios realizados:
+- Se añadió exportación opcional de `sweep_summary_table.fig` y `sweep_summary_table.png`.
+- Se mantuvo `sweepSummary` como `table` completa y las exportaciones `.mat`, `.csv` y `.xlsx`.
+- Se renombró la comparación frente a baseline a `GainNMSE_Test_vs_Baseline_dB`, donde valores positivos indican mejora frente al baseline.
+- No se cambiaron cálculos de entrenamiento, pruning/fine-tuning, NMSE, features, split, `mappingMode`, normalización ni semántica X/Y.
+
+Comandos ejecutados por Codex:
+- Validaciones Git ligeras.
+- Prueba MATLAB ligera con `which(...)`, sin ejecutar el sweep.
+
+Resultados:
+- No se ejecutaron entrenamientos.
+- No se ejecutó inferencia.
+- No se ejecutó el sweep completo.
+- No hay resultados reales nuevos; `docs/RESULTS_INDEX.md` no se actualizó.
+
+Pendiente:
+- Ejecutar manualmente el sweep y revisar que la exportación visual funcione en el entorno MATLAB disponible.
+
+---
+
 ## Plantilla para futuras entradas
 
 Copiar y rellenar esta plantilla después de cada intervención relevante:
