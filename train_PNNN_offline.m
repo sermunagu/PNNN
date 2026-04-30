@@ -490,15 +490,6 @@ y_rot = pred(:,1) + 1j*pred(:,2);
 yhat = conj(r_sel(:)) .* y_rot(:);
 end
 
-function tf = hasFieldOrProp(value, name)
-name = char(name);
-if isstruct(value)
-    tf = isfield(value, name);
-else
-    tf = isprop(value, name);
-end
-end
-
 function fields = inputFieldCandidatesFromMapping(mappingMode)
 switch string(mappingMode)
     case "xy_forward"
