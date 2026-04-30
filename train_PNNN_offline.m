@@ -459,20 +459,6 @@ switch string(mappingMode)
 end
 end
 
-function validateSignals(x, y, M)
-x = x(:);
-y = y(:);
-if isempty(x) || numel(x) ~= numel(y)
-    error('Las señales x e y deben ser vectores no vacíos de la misma longitud.');
-end
-if numel(x) <= M
-    error('La medida es demasiado corta para M=%d. N=%d.', M, numel(x));
-end
-if any(~isfinite(x)) || any(~isfinite(y))
-    error('La medida contiene NaN o Inf en x o y.');
-end
-end
-
 function layers = buildLayers(inputDim, numNeurons, actType)
 layers = [
     featureInputLayer(inputDim, Name="input")
@@ -497,53 +483,11 @@ end
 layers = [layers fullyConnectedLayer(2, Name="fcOut")];
 end
 
-function totalParams = countDenseParams(inputDim, numNeurons, outputDim)
-totalParams = 0;
-prevDim = inputDim;
-for i = 1:numel(numNeurons)
-    totalParams = totalParams + prevDim*numNeurons(i) + numNeurons(i);
-    prevDim = numNeurons(i);
-end
-totalParams = totalParams + prevDim*outputDim + outputDim;
-end
-
 function yhat = predictPhaseNorm(netDPD, inputMtxN, normStats, r_sel)
 predN = predict(netDPD, inputMtxN);
 pred = predN .* normStats.sigmaY + normStats.muY;
 y_rot = pred(:,1) + 1j*pred(:,2);
 yhat = conj(r_sel(:)) .* y_rot(:);
-end
-
-function v = nmse_db(ref, est)
-ref = ref(:);
-est = est(:);
-v = 20*log10(norm(est-ref,2) / max(norm(ref,2), realmin));
-end
-
-function saveTrainingProgressFigure(info, expFolder)
-if ~hasFieldOrProp(info, "TrainingHistory") || ~hasFieldOrProp(info, "ValidationHistory")
-    return;
-end
-
-trainHist = info.TrainingHistory;
-valHist = info.ValidationHistory;
-
-if isempty(trainHist) || isempty(valHist)
-    return;
-end
-
-figTP = figure('Position',[100 100 900 400]);
-plot(trainHist.Iteration, trainHist.Loss, 'LineWidth', 1.2); hold on;
-plot(valHist.Iteration, valHist.Loss, 'LineWidth', 1.2);
-legend('Training','Validation','Location','northeast');
-xlabel('Iteration');
-ylabel('Loss');
-grid on;
-title('Training Progress');
-
-saveas(figTP, fullfile(expFolder, "trainingProgress.png"));
-saveas(figTP, fullfile(expFolder, "trainingProgress.fig"));
-close(figTP);
 end
 
 function tf = hasFieldOrProp(value, name)
@@ -577,42 +521,4 @@ switch string(mappingMode)
     otherwise
         error("mappingMode debe ser 'xy_forward' o 'yx_inverse'.");
 end
-end
-
-function exportMetadataTxt(txtFile, metadata)
-fid = fopen(txtFile, "w");
-if fid < 0
-    error("No se pudo abrir metadata.txt para escritura: %s", txtFile);
-end
-
-exclude = ["muX", "sigmaX", "idxTrain", "idxVal", "idxTest", "muY", "sigmaY", "pruning"];
-fields = fieldnames(metadata);
-
-for i = 1:numel(fields)
-    key = fields{i};
-    if any(strcmp(key, exclude))
-        continue;
-    end
-
-    value = metadata.(key);
-    if isnumeric(value)
-        if isscalar(value)
-            valStr = num2str(value);
-        else
-            valStr = mat2str(value);
-        end
-    elseif ischar(value)
-        valStr = value;
-    elseif isstring(value)
-        valStr = char(value);
-    elseif islogical(value)
-        valStr = mat2str(value);
-    else
-        valStr = "[unsupported datatype]";
-    end
-
-    fprintf(fid, "%s = %s\n", key, valStr);
-end
-
-fclose(fid);
 end

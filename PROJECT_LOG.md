@@ -462,6 +462,45 @@ Pendiente:
 
 ---
 
+### 2026-04-30 — Refactor fase 1 de helpers locales de entrenamiento
+
+Objetivo:
+- Limpiar `train_PNNN_offline.m` moviendo helpers auxiliares de bajo riesgo a `toolbox/` sin cambiar comportamiento.
+
+Archivos modificados:
+- `train_PNNN_offline.m`
+- `PROJECT_LOG.md`
+
+Archivos nuevos:
+- `toolbox/metrics/nmse_db.m`
+- `toolbox/metrics/countDenseParams.m`
+- `toolbox/reporting/saveTrainingProgressFigure.m`
+- `toolbox/io/exportMetadataTxt.m`
+- `toolbox/data/validateSignals.m`
+
+Cambios realizados:
+- Se movieron `nmse_db`, `countDenseParams`, `saveTrainingProgressFigure`, `exportMetadataTxt` y `validateSignals` a ficheros separados.
+- Se mantuvieron nombres y firmas de funciones.
+- Se dejaron locales las funciones relacionadas con mapping, X/Y, phase normalization y deploy semantics para una fase posterior.
+- No se cambió `README.md` porque no mencionaba rutas afectadas por los helpers movidos.
+
+Comandos ejecutados por Codex:
+- `git status --short`
+- Lectura de `train_PNNN_offline.m` y `README.md`.
+
+Comandos que debe ejecutar el usuario:
+- Ninguno para esta intervención; no se ejecutó MATLAB.
+
+Resultados:
+- No se cambiaron cálculos, entrenamiento, pruning, fine-tuning, features, split, `mappingMode`, normalización ni semántica X/Y.
+- No se ejecutó MATLAB.
+- No se generaron medidas, resultados, modelos, figuras ni deploy packages nuevos.
+
+Pendiente:
+- En una fase posterior, revisar si conviene mover helpers más sensibles como `selectXYByMapping`, `predictPhaseNorm` y funciones de deploy fields.
+
+---
+
 ## Plantilla para futuras entradas
 
 Copiar y rellenar esta plantilla después de cada intervención relevante:
