@@ -10,19 +10,21 @@ clear; clc; close all;
 scriptDir = fileparts(mfilename('fullpath'));
 repoRoot = fileparts(scriptDir);
 addpath(genpath(repoRoot));
+baseCfg = getPNNNConfig(repoRoot);
 
 %% ======================= SWEEP CONFIG =======================
-sparsityList = [0.0 0.1 0.3 0.5 0.7];
-fineTuneEpochs = 10;
+% Edit this list to choose the pruning sparsities evaluated by the sweep.
+sparsityList = [0 0.1 0.2 0.3 0.4 0.5];
+fineTuneEpochs = baseCfg.sweep.fineTuneEpochs;
 % Quick validation:
 % sparsityList = [0.0 0.3];
 % fineTuneEpochs = 20;
-includeBias = false;
-freezePruned = true;
-pruningScope = "global";
+includeBias = baseCfg.sweep.includeBias;
+freezePruned = baseCfg.sweep.freezePruned;
+pruningScope = baseCfg.sweep.pruningScope;
 
-measurementName = 'experiment20260429T134032_xy';
-sweepOutputRoot = fullfile(repoRoot, 'results', 'pruning_sweeps');
+measurementName = baseCfg.data.measurementName;
+sweepOutputRoot = baseCfg.sweep.outputRoot;
 
 timestamp = char(datetime('now', 'Format', 'yyyyMMdd_HHmmss'));
 sweepFolder = fullfile(sweepOutputRoot, timestamp);
@@ -62,8 +64,8 @@ for sweepIdx = 1:numel(sparsityList)
     fprintf('Results root    : %s\n', runResultsRoot);
 
     cfgOverrides = buildSweepOverrides( ...
-        measurementName, runResultsRoot, sparsity, pruningScope, ...
-        includeBias, freezePruned, fineTuneEpochs);
+        measurementName, baseCfg.paths.measurementsDir, runResultsRoot, ...
+        sparsity, pruningScope, includeBias, freezePruned, fineTuneEpochs);
 
     train_PNNN_offline;
 
@@ -95,12 +97,13 @@ exportSweepSummary(sweepSummary, sweepFolder);
 fprintf('\nSweep summary saved in: %s\n', sweepFolder);
 
 %% ======================= LOCAL HELPERS =======================
-function cfgOverrides = buildSweepOverrides(measurementName, runResultsRoot, ...
+function cfgOverrides = buildSweepOverrides(measurementName, measurementFolder, runResultsRoot, ...
     sparsity, pruningScope, includeBias, freezePruned, fineTuneEpochs)
 
 cfgOverrides = struct();
-cfgOverrides.measfilename = measurementName;
-cfgOverrides.resultsRoot = runResultsRoot;
+cfgOverrides.data.measurementName = measurementName;
+cfgOverrides.data.measurementFile = fullfile(measurementFolder, [measurementName '.mat']);
+cfgOverrides.paths.resultsDir = runResultsRoot;
 cfgOverrides.runtime.clearCommandWindow = false;
 
 cfgOverrides.pruning = struct();

@@ -6,8 +6,8 @@ function cfg = applyConfigOverrides(cfg, overrides)
 % unchanged when no overrides are provided.
 %
 % Inputs:
-%   cfg       - Base configuration struct defined by train_PNNN_offline.
-%   overrides - Struct with fields that already exist in cfg.
+%   cfg       - Base grouped configuration from getPNNNConfig.
+%   overrides - Grouped struct with fields that already exist in cfg.
 %
 % Outputs:
 %   cfg - Configuration struct with override values applied recursively.
@@ -15,6 +15,8 @@ function cfg = applyConfigOverrides(cfg, overrides)
 % Notes:
 %   Unknown fields raise an error so misspelled sweep settings do not silently
 %   create unused configuration entries.
+%   Flat legacy aliases are intentionally unsupported; use cfg.paths, cfg.data,
+%   cfg.model, cfg.training, cfg.pruning, cfg.gmp, cfg.output, or cfg.sweep.
 
 if nargin < 2 || isempty(overrides)
     return;

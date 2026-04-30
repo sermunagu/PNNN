@@ -14,8 +14,8 @@ resGMP = getField(summary, 'resGMP', struct());
 
 fprintf('\n==================== FINAL PNNN SUMMARY ====================\n\n');
 
-fprintf('%-33s: %s\n', 'Measurement', textValue(cfg.measfilename));
-fprintf('%-33s: %s\n', 'Mapping mode', textValue(cfg.mappingMode));
+fprintf('%-33s: %s\n', 'Measurement', textValue(cfg.data.measurementName));
+fprintf('%-33s: %s\n', 'Mapping mode', textValue(cfg.data.mappingMode));
 fprintf('%-33s: %s\n', 'Model', modelDescription(cfg));
 fprintf('%-33s: %s\n', 'Split', splitDescription(cfg));
 
@@ -116,14 +116,16 @@ fprintf('%-33s: %s\n', 'Gain vs GMP justo ridge 1e-4', gainValue(gmpJustoRidge, 
 end
 
 function txt = modelDescription(cfg)
-neurons = strjoin(string(cfg.numNeurons), 'x');
+neurons = strjoin(string(cfg.model.numNeurons), 'x');
 txt = sprintf('phaseNorm %s | M=%d | orders=%s | N=%s | %s', ...
-    textValue(cfg.featMode), cfg.M, mat2str(cfg.orders), char(neurons), upper(textValue(cfg.actType)));
+    textValue(cfg.model.featMode), cfg.model.M, mat2str(cfg.model.orders), ...
+    char(neurons), upper(textValue(cfg.model.actType)));
 end
 
 function txt = splitDescription(cfg)
 txt = sprintf('train=%.0f%% | val=%.0f%% | test=%.0f%% | seed=%d', ...
-    100*cfg.trainRatio, 100*cfg.valRatio, 100*cfg.testRatio, cfg.splitSeed);
+    100*cfg.split.trainRatio, 100*cfg.split.valRatio, ...
+    100*cfg.split.testRatio, cfg.split.seed);
 end
 
 function value = getField(s, fieldName, defaultValue)

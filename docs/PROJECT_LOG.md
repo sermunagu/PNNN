@@ -727,6 +727,93 @@ Pendiente:
 
 ---
 
+### 2026-04-30 — Centralización de configuración PNNN
+
+Objetivo:
+- Centralizar los defaults oficiales de PNNN y hacer que los scripts operativos carguen una configuración común sin cambiar el comportamiento por defecto.
+
+Archivos nuevos:
+- `config/getPNNNConfig.m`
+
+Archivos modificados:
+- `train_PNNN_offline.m`
+- `run_PNNN_online_from_xy.m`
+- `experiments/run_PNNN_pruning_sweep.m`
+- `README.md`
+- `AGENTS.md`
+- `docs/CODEX_WORKFLOW.md`
+- `docs/PROJECT_LOG.md`
+
+Cambios realizados:
+- Se añadió `config/getPNNNConfig.m` como fuente central de rutas, medida por defecto, `mappingMode`, split, modelo, entrenamiento, pruning, GMP, outputs e información de sweep.
+- `train_PNNN_offline.m` carga `getPNNNConfig(scriptDir)` y mantiene los defaults actuales, incluyendo pruning activado con `cfg.pruning.sparsity = 0.3` y baselines GMP activos.
+- `run_PNNN_online_from_xy.m` usa la configuración central para rutas, medida de entrada por defecto, carpeta de outputs, suffix y defaults de salida, manteniendo `yhat` como señal principal.
+- `experiments/run_PNNN_pruning_sweep.m` usa la configuración central como base y mantiene la lista de sweep editable en `sparsityList`.
+- Se preservó la modificación previa del usuario en `sparsityList = [0 0.1 0.2 0.3 0.4 0.5]`.
+- Se documentó que la ruta oficial actual es `C:\Sergi\Investigacion\Códigos\NN\PNNN`.
+- No se cambiaron arquitectura, features, normalización, split, `mappingMode`, semántica X/Y ni defaults operativos.
+
+Comandos ejecutados por Codex:
+- `git status -sb`
+- `git status --short`
+- `git diff --stat`
+- `git diff -- experiments/run_PNNN_pruning_sweep.m`
+- `git diff --check`
+- búsquedas ligeras con `git grep`
+- Prueba MATLAB ligera de `getPNNNConfig()`, sin ejecutar entrenamiento, inferencia ni sweep.
+
+Resultados:
+- La prueba ligera de configuración devolvió `cfg.pruning.sparsity = 0.3`, `cfg.data.measurementName = experiment20260429T134032_xy` y `cfg.sweep.fineTuneEpochs = 10`.
+- No se ejecutó MATLAB pesado.
+- No se ejecutaron entrenamientos, inferencias ni pruning sweeps completos.
+- No se tocaron `measurements/`, `results/`, `generated_outputs/`, `.mat`, `.fig`, `deploy_package.mat` ni outputs experimentales.
+
+Pendiente:
+- Revisar el diff completo antes de decidir si hacer commit.
+
+---
+
+### 2026-04-30 — Eliminación de aliases legacy de configuración PNNN
+
+Objetivo:
+- Eliminar la capa de compatibilidad plana generada por `getPNNNConfig.m` y forzar el uso de la configuración agrupada.
+
+Archivos modificados:
+- `config/getPNNNConfig.m`
+- `train_PNNN_offline.m`
+- `run_PNNN_online_from_xy.m`
+- `experiments/run_PNNN_pruning_sweep.m`
+- `toolbox/io/applyConfigOverrides.m`
+- `toolbox/pruning/fineTunePrunedNetwork.m`
+- `toolbox/reporting/printFinalPNNNSummary.m`
+- `README.md`
+- `docs/PROJECT_LOG.md`
+
+Cambios realizados:
+- Se eliminó `addLegacyAliases` y ya no se crean campos planos como `cfg.M`, `cfg.measfilename`, `cfg.resultsRoot` o `cfg.runGMPBaseline`.
+- Los scripts oficiales y helpers afectados usan solo campos agrupados como `cfg.model.M`, `cfg.data.measurementName`, `cfg.paths.resultsDir`, `cfg.training.maxEpochs` y `cfg.gmp.runBaseline`.
+- `applyConfigOverrides.m` queda documentado como mecanismo de overrides agrupados; los overrides planos legacy pasan a ser errores de campo desconocido.
+- Se retiraron overrides legacy del pruning sweep y se mantienen solo `cfgOverrides.data.*`, `cfgOverrides.paths.*`, `cfgOverrides.runtime.*` y `cfgOverrides.pruning.*`.
+- No se cambiaron arquitectura, features, normalización, split, `mappingMode`, semántica X/Y ni defaults operativos.
+
+Comandos ejecutados por Codex:
+- `git status -sb`
+- `git status --short`
+- búsquedas ligeras de usos legacy de `cfg.*`
+- `git diff --check`
+- prueba MATLAB ligera de `getPNNNConfig()`, sin ejecutar entrenamiento, inferencia ni sweep.
+
+Resultados:
+- No se ejecutaron entrenamientos.
+- No se ejecutaron inferencias.
+- No se ejecutó pruning sweep.
+- No se tocaron `measurements/`, `results/`, `generated_outputs/`, `.mat`, `.fig`, `deploy_package.mat` ni outputs experimentales.
+
+Pendiente:
+- Revisar el diff completo y ejecutar una validación manual de entrenamiento/inferencia cuando Sergi decida.
+
+---
+
 ## Plantilla para futuras entradas
 
 Copiar y rellenar esta plantilla después de cada intervención relevante:

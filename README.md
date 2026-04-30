@@ -6,11 +6,18 @@ Repositorio limpio oficial del proyecto PNNN:
 https://github.com/sermunagu/PNNN.git
 ```
 
+Ruta local oficial actual:
+
+```text
+C:\Sergi\Investigacion\Códigos\NN\PNNN
+```
+
 El proyecto se llamaba antes `NN_DPD`. Ese nombre puede aparecer en rutas o resultados históricos, pero los scripts operativos actuales usan el nombre `PNNN`. `CVNN` es un proyecto separado y no forma parte de este repositorio.
 
 ## Scripts Principales
 
-- `train_PNNN_offline.m`: flujo offline recomendado. Entrena la NN phase-normalized desde una medida `x/y` y guarda `model.mat`, `predictions.mat`, `metadata.txt` y `deploy_package.mat`.
+- `config/getPNNNConfig.m`: configuración oficial centralizada de rutas, datos, split, modelo, entrenamiento, pruning, GMP y outputs.
+- `train_PNNN_offline.m`: flujo offline recomendado. Carga `config/getPNNNConfig.m`, entrena la NN phase-normalized desde una medida `x/y` y guarda `model.mat`, `predictions.mat`, `metadata.txt` y `deploy_package.mat`.
   Nota actual: este script tiene pruning activado por defecto con `cfg.pruning.enabled = true` y `cfg.pruning.sparsity = 0.3`. Para obtener un baseline sin pruning, hay que desactivarlo explícitamente o usar overrides/configuración adecuada antes de ejecutar.
 - `run_PNNN_online_from_xy.m`: flujo online recomendado. Carga `deploy_package.mat`, lee un nuevo fichero `x/y`, aplica la red y guarda la señal estimada.
 - `legacy/main.m`: flujo histórico monolítico de un experimento.
@@ -50,13 +57,15 @@ La normalización de fase usa `r = conj(x(n))/abs(x(n))`. La red predice `r*y(n)
 ## Mantenimiento
 
 - No dupliques el constructor phase-normalized dentro de scripts.
+- Mantén los defaults operativos en `config/getPNNNConfig.m`; los scripts oficiales deben cargar esa configuración y sobrescribir solo lo necesario.
+- Usa overrides agrupados (`cfg.paths`, `cfg.data`, `cfg.model`, `cfg.training`, `cfg.pruning`, `cfg.gmp`, `cfg.output`, `cfg.sweep`); los aliases legacy planos de configuración ya no se mantienen.
 - Mantén `metadata.mappingMode`, `metadata.featMode`, ratios y `splitSeed` al guardar modelos.
 - El flujo online no reentrena y no necesita `y`: para `xy_forward` toma `x` como entrada, genera `yhat` y evita guardar la predicción bajo campos `x/xi`.
 - La señal candidata para laboratorio debe verificarse por script y por campos guardados. En el flujo actual, `run_PNNN_online_from_xy.m` guarda `yhat`/`yhat_all` como salida principal documentada.
 
 ## Pruning Sweeps
 
-El script `experiments/run_PNNN_pruning_sweep.m` permite lanzar varios entrenamientos secuenciales con distintos valores de sparsity sin editar manualmente `train_PNNN_offline.m`.
+El script `experiments/run_PNNN_pruning_sweep.m` permite lanzar varios entrenamientos secuenciales con distintos valores de sparsity sin editar manualmente `train_PNNN_offline.m`. Para cambiar las sparsities del sweep, edita la lista `sparsityList` en la sección `SWEEP CONFIG` de ese script.
 
 Desde la raíz del repo:
 

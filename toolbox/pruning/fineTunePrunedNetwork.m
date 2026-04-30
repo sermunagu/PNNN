@@ -29,7 +29,7 @@ trailingAvg = [];
 trailingAvgSq = [];
 iteration = 0;
 numTrain = size(inputMtxTrainN, 1);
-miniBatchSize = cfg.miniBatchSize;
+miniBatchSize = cfg.training.miniBatchSize;
 bestNet = net;
 bestEpoch = 0;
 bestValidationLoss = Inf;
@@ -53,7 +53,8 @@ for epoch = 1:cfg.pruning.fineTuneEpochs
     epochLoss = 0;
     epochCount = 0;
     learnRate = cfg.pruning.fineTuneInitialLearnRate * ...
-        cfg.LearnRateDropFactor ^ floor((epoch-1) / max(cfg.LearnRateDropPeriod, 1));
+        cfg.training.learnRateDropFactor ^ ...
+        floor((epoch-1) / max(cfg.training.learnRateDropPeriod, 1));
 
     for startIdx = 1:miniBatchSize:numTrain
         batchIdx = idx(startIdx:min(startIdx + miniBatchSize - 1, numTrain));
@@ -90,7 +91,7 @@ for epoch = 1:cfg.pruning.fineTuneEpochs
         bestNet = net;
     end
 
-    if cfg.verbose
+    if cfg.training.verbose
         fprintf("Pruning fine-tune epoch %d/%d | train loss %.4g | val loss %.4g\n", ...
             epoch, cfg.pruning.fineTuneEpochs, ...
             fineTuneInfo.TrainLoss(epoch), fineTuneInfo.ValidationLoss(epoch));

@@ -10,6 +10,12 @@ El directorio `PNNN` actual es el repositorio limpio oficial conectado a GitHub:
 https://github.com/sermunagu/PNNN.git
 ```
 
+Ruta local oficial actual:
+
+```text
+C:\Sergi\Investigacion\Códigos\NN\PNNN
+```
+
 El proyecto se llamaba antes `NN_DPD`, pero los scripts operativos actuales son los de `PNNN`. No trabajar desde copias legacy antiguas salvo indicación explícita del usuario. `CVNN` es un proyecto separado y no debe tocarse desde este flujo.
 
 Los ficheros principales para guiar a Codex son:
@@ -17,6 +23,7 @@ Los ficheros principales para guiar a Codex son:
 - `AGENTS.md`: reglas permanentes de trabajo.
 - `docs/PROJECT_LOG.md`: memoria técnica del proyecto.
 - `docs/RESULTS_INDEX.md`: índice rápido de resultados.
+- `config/getPNNNConfig.m`: defaults oficiales usados por los scripts principales.
 
 ---
 
@@ -82,7 +89,7 @@ Entrenamiento:
 matlab -batch "train_PNNN_offline"
 ```
 
-Nota actual: `train_PNNN_offline.m` tiene pruning activado por defecto con `cfg.pruning.enabled = true` y `cfg.pruning.sparsity = 0.3`. Si se quiere un baseline sin pruning, hay que desactivarlo explícitamente o usar overrides/configuración adecuada antes de ejecutar.
+Nota actual: `train_PNNN_offline.m` carga `config/getPNNNConfig.m` y tiene pruning activado por defecto con `cfg.pruning.enabled = true` y `cfg.pruning.sparsity = 0.3`. Si se quiere un baseline sin pruning, hay que desactivarlo explícitamente o usar overrides/configuración adecuada antes de ejecutar. Para cambiar sparsities de sweep, editar `sparsityList` en `experiments/run_PNNN_pruning_sweep.m`.
 
 Inferencia:
 

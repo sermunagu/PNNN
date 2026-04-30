@@ -12,6 +12,12 @@ Este directorio `PNNN` es el repositorio limpio oficial conectado a GitHub:
 https://github.com/sermunagu/PNNN.git
 ```
 
+Ruta local oficial actual:
+
+```text
+C:\Sergi\Investigacion\Códigos\NN\PNNN
+```
+
 El proyecto se llamaba antes `NN_DPD`; ese nombre puede aparecer en resultados, rutas o notas históricas, pero no debe usarse para el flujo operativo actual salvo que se esté documentando explícitamente legado. No trabajar desde copias legacy antiguas salvo indicación explícita del usuario.
 
 `CVNN` es un proyecto separado y no debe mezclarse con este repositorio.
@@ -115,8 +121,10 @@ matlab -batch "run_PNNN_online_from_xy"
 ```
 
 Nota operativa actual:
+- La configuración oficial centralizada está en `config/getPNNNConfig.m`.
 - `train_PNNN_offline.m` tiene pruning activado por defecto con `cfg.pruning.enabled = true` y `cfg.pruning.sparsity = 0.3`.
 - Para obtener un baseline sin pruning, hay que desactivarlo explícitamente o usar overrides/configuración adecuada antes de ejecutar.
+- Para cambiar sparsities de sweep, editar `sparsityList` en `experiments/run_PNNN_pruning_sweep.m`.
 
 Después, el usuario pegará los resultados para interpretarlos.
 

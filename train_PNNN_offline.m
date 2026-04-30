@@ -23,62 +23,7 @@ addpath(genpath(scriptDir));
 PAPR = @(x) 20*log10(max(abs(x))/rms(x));
 
 %% ======================= CONFIG GLOBAL =======================
-cfg = struct();
-
-cfg.measfilename      = 'experiment20260429T134032_xy';
-cfg.measurementFolder = fullfile(scriptDir, 'measurements');
-cfg.resultsRoot       = fullfile(scriptDir, 'results');
-cfg.blockName         = 'ILC_DPD';
-cfg.modelado          = 'DPD';
-cfg.mappingMode       = 'xy_forward';   % 'xy_forward' o 'yx_inverse'
-
-cfg.M         = 13;
-cfg.orders    = [1 3 5 7];
-cfg.featMode  = 'full';     % 'full' o 'pruned'
-
-cfg.dataDivision = 'stratified_by_amplitude';
-cfg.trainRatio   = 0.70;
-cfg.valRatio     = 0.15;
-cfg.testRatio    = 0.15;
-cfg.splitSeed    = 42;
-
-cfg.numNeurons    = [128];
-cfg.actType       = 'elu';    % 'leakyrelu', 'relu', 'elu', 'sigmoid'
-cfg.maxEpochs     = 300;
-cfg.miniBatchSize = 1024;
-
-cfg.InitialLearnRate    = 2e-4;
-cfg.LearnRateDropPeriod = 5;
-cfg.LearnRateDropFactor = 0.95;
-cfg.ValidationPatience  = 100;
-cfg.trainingPlots       = 'training-progress'; % 'training-progress' o 'none'
-cfg.verbose             = true;
-
-cfg.runtime.clearCommandWindow = true;
-
-cfg.pruning.enabled = true;
-cfg.pruning.sparsity = 0.3;        % fracción entre 0 y 1
-cfg.pruning.scope = "global";      % primera versión: global
-cfg.pruning.includeBias = false;
-cfg.pruning.fineTuneEnabled = true;
-cfg.pruning.fineTuneEpochs = 10;
-cfg.pruning.fineTuneInitialLearnRate = cfg.InitialLearnRate;
-cfg.pruning.freezePruned = true;
-
-cfg.runGMPBaseline = true;
-cfg.runGMPJusto = true;
-cfg.gmpJusto = struct();
-cfg.gmpJusto.Qpmax = 50;
-cfg.gmpJusto.Qnmax = 50;
-cfg.gmpJusto.Pmax = 13;
-cfg.gmpJusto.lambda1 = 1e-3;
-cfg.gmpJusto.lambda2 = 1e-4;
-cfg.gmpJusto.indexDomain = 'periodic_full';
-cfg.gmpJusto.blockSize = 8192;
-cfg.gmpJusto.maxPopulation = 100;
-cfg.gmpJusto.selectionMode = 'omp';
-
-cfg.skipIfExists = false;
+cfg = getPNNNConfig(scriptDir);
 cfg = applyConfigOverrides(cfg, pnnn_cfgOverrides);
 if cfg.runtime.clearCommandWindow
     clc;
@@ -86,24 +31,26 @@ end
 cfg.pruning = validatePruningConfig(cfg.pruning);
 
 %% ======================= TAGS DE EXPERIMENTO =======================
-dateTag  = string(datestr(now, 'yyyymmdd'));
-memTag   = "M" + string(cfg.M);
-ordTag   = "O" + join(string(cfg.orders), "");
-archTag  = "N" + strjoin(string(cfg.numNeurons), "x");
-featTag  = string(cfg.featMode);
-actTag   = string(cfg.actType);
+dateTag  = string(datestr(now, cfg.output.dateFormat));
+memTag   = "M" + string(cfg.model.M);
+ordTag   = "O" + join(string(cfg.model.orders), "");
+archTag  = "N" + strjoin(string(cfg.model.numNeurons), "x");
+featTag  = string(cfg.model.featMode);
+actTag   = string(cfg.model.actType);
 
-experimentName = "NN_" + string(cfg.modelado) + "_" + string(cfg.mappingMode) + "_" + ...
-    memTag + ordTag + "_" + archTag + "_phaseNorm_" + featTag + "_" + ...
-    actTag + "_" + string(cfg.measfilename) + "_" + dateTag + "_offline";
+experimentName = string(cfg.output.experimentPrefix) + "_" + string(cfg.data.modelado) + "_" + ...
+    string(cfg.data.mappingMode) + "_" + memTag + ordTag + "_" + archTag + "_" + ...
+    string(cfg.output.modelFamilyTag) + "_" + featTag + "_" + ...
+    actTag + "_" + string(cfg.data.measurementName) + "_" + dateTag + "_" + ...
+    string(cfg.output.experimentSuffix);
 
-expFolder  = fullfile(cfg.resultsRoot, experimentName);
-modelFile  = fullfile(expFolder, "model.mat");
-predFile   = fullfile(expFolder, "predictions.mat");
-txtFile    = fullfile(expFolder, "metadata.txt");
-deployFile = fullfile(expFolder, "deploy_package.mat");
+expFolder  = fullfile(cfg.paths.resultsDir, experimentName);
+modelFile  = fullfile(expFolder, cfg.output.modelFileName);
+predFile   = fullfile(expFolder, cfg.output.predictionsFileName);
+txtFile    = fullfile(expFolder, cfg.output.metadataFileName);
+deployFile = fullfile(expFolder, cfg.output.deployFileName);
 
-if cfg.skipIfExists && exist(modelFile, "file")
+if cfg.output.skipIfExists && exist(modelFile, "file")
     fprintf("[SKIP] El experimento ya existe: %s\n", modelFile);
     return;
 end
@@ -112,7 +59,7 @@ if ~exist(expFolder, "dir")
 end
 
 %% ======================= CARGA MEDIDA =======================
-measPath = fullfile(cfg.measurementFolder, [cfg.measfilename '.mat']);
+measPath = cfg.data.measurementFile;
 S = load(measPath);
 assert(isfield(S,'x') && isfield(S,'y'), 'El fichero debe contener x e y.');
 
@@ -128,21 +75,27 @@ else
     fsUsed = NaN;
 end
 
-[x_in, y_out] = selectXYByMapping(S.x, S.y, cfg.mappingMode);
-validateSignals(x_in, y_out, cfg.M);
+[x_in, y_out] = selectXYByMapping(S.x, S.y, cfg.data.mappingMode);
+validateSignals(x_in, y_out, cfg.model.M);
 
 % Quitar DC igual que en la rama histórica.
-x_in  = x_in(:)  - mean(x_in(:));
-y_out = y_out(:) - mean(y_out(:));
+if cfg.model.removeDC
+    x_in  = x_in(:)  - mean(x_in(:));
+    y_out = y_out(:) - mean(y_out(:));
+else
+    x_in  = x_in(:);
+    y_out = y_out(:);
+end
 
-fprintf("Fichero cargado: %s\n", cfg.measfilename);
+fprintf("Fichero cargado: %s\n", cfg.data.measurementName);
 fprintf("Longitud de las señales: %d muestras\n", numel(x_in));
 if ~isnan(fsUsed)
     fprintf("fs = %.3f MHz\n", fsUsed/1e6);
 end
 
 %% ======================= DATASET PHASE-NORMALIZED =======================
-[X_in, Y_out, r_vec] = buildPhaseNormDataset(x_in, y_out, cfg.M, cfg.orders, cfg.featMode);
+[X_in, Y_out, r_vec] = buildPhaseNormDataset(x_in, y_out, ...
+    cfg.model.M, cfg.model.orders, cfg.model.featMode);
 
 Ns = size(X_in, 2);
 inputDim = size(X_in, 1);
@@ -155,8 +108,8 @@ fprintf("Número de muestras con extensión periódica (Ns=N): %d\n", Ns);
 
 %% ======================= SPLIT =======================
 [idxTrain, idxVal, idxTest] = splitTrainValTest( ...
-    cfg.dataDivision, inputMtxAll, x_in, cfg.M, ...
-    cfg.trainRatio, cfg.valRatio, cfg.testRatio, cfg.splitSeed);
+    cfg.split.method, inputMtxAll, x_in, cfg.model.M, ...
+    cfg.split.trainRatio, cfg.split.valRatio, cfg.split.testRatio, cfg.split.seed);
 
 idxTrainVal = [idxTrain(:); idxVal(:)];
 
@@ -174,18 +127,18 @@ NMSE_val_ridge_1e3 = NaN;
 NMSE_val_ridge_1e4 = NaN;
 resGMP = struct();
 
-if cfg.runGMPBaseline || cfg.runGMPJusto
-    gmpBaseFolder = fullfile(cfg.resultsRoot, "GMP_baselines");
+if cfg.gmp.runBaseline || cfg.gmp.runJusto
+    gmpBaseFolder = fullfile(cfg.paths.resultsDir, cfg.gmp.baselineFolderName);
     if ~exist(gmpBaseFolder, "dir")
         mkdir(gmpBaseFolder);
     end
 end
 
-if cfg.runGMPBaseline
+if cfg.gmp.runBaseline
     fprintf("\n--- Baseline GMP ---\n");
     gmpFile = fullfile(gmpBaseFolder, ...
-        "GMP_baseline_" + string(cfg.measfilename) + "_" + ...
-        string(cfg.mappingMode) + "_" + string(cfg.modelado) + ".mat");
+        "GMP_baseline_" + string(cfg.data.measurementName) + "_" + ...
+        string(cfg.data.mappingMode) + "_" + string(cfg.data.modelado) + ".mat");
 
     if exist(gmpFile, "file")
         load(gmpFile, "NMSE_val_GMP", "NMSE_val_ridge_1e3", ...
@@ -204,15 +157,14 @@ if cfg.runGMPBaseline
     fprintf("NMSE (GMP + ridge 1e-4, val)     = %.2f dB\n", NMSE_val_ridge_1e4);
 end
 
-if cfg.runGMPJusto
+if cfg.gmp.runJusto
     fprintf("\n--- GMP JUSTO (mismo split que la NN) ---\n");
-    cfgGMP = cfg.gmpJusto;
-    cfgGMP.indexDomain = 'periodic_full';
-    M = cfg.M; %#ok<NASGU>
+    cfgGMP = cfg.gmp.justo;
+    M = cfg.model.M; %#ok<NASGU>
 
     gmpFileJusto = fullfile(gmpBaseFolder, ...
-        "GMP_baseline_" + string(cfg.measfilename) + "_" + ...
-        string(cfg.mappingMode) + "_" + string(cfg.modelado) + "_justo.mat");
+        "GMP_baseline_" + string(cfg.data.measurementName) + "_" + ...
+        string(cfg.data.mappingMode) + "_" + string(cfg.data.modelado) + "_justo.mat");
 
     if exist(gmpFileJusto, "file")
         Sgmp = load(gmpFileJusto, "resGMP");
@@ -220,7 +172,7 @@ if cfg.runGMPJusto
         fprintf("[INFO] Cargando baseline GMP justo desde %s\n", gmpFileJusto);
     else
         [resGMP, rManagerGMP] = GMP_ridge_GVG_justo( ...
-            x_in, y_out, idxTrainVal, idxTest, cfg.M, [], cfgGMP);
+            x_in, y_out, idxTrainVal, idxTest, cfg.model.M, [], cfgGMP);
         save(gmpFileJusto, "resGMP", "rManagerGMP", ...
             "idxTrainVal", "idxTest", "M", "cfgGMP", "-v7.3");
         fprintf("[INFO] Guardando baseline GMP justo en %s\n", gmpFileJusto);
@@ -254,30 +206,30 @@ outputMtxValN   = (outputMtxVal   - muY) ./ sigmaY;
 normStats = struct('muX',muX,'sigmaX',sigmaX,'muY',muY,'sigmaY',sigmaY);
 
 %% ======================= ARQUITECTURA Y ENTRENAMIENTO =======================
-layers = buildLayers(inputDim, cfg.numNeurons, cfg.actType);
-totalParams = countDenseParams(inputDim, cfg.numNeurons, 2);
+layers = buildLayers(inputDim, cfg.model.numNeurons, cfg.model.actType);
+totalParams = countDenseParams(inputDim, cfg.model.numNeurons, 2);
 
 numObsTrain  = size(inputMtxTrainN,1);
-iterPerEpoch = max(1, floor(numObsTrain/cfg.miniBatchSize));
+iterPerEpoch = max(1, floor(numObsTrain/cfg.training.miniBatchSize));
 valFrequency = max(1, iterPerEpoch);
 
-opts = trainingOptions("adam", ...
-    MaxEpochs           = cfg.maxEpochs, ...
-    MiniBatchSize       = cfg.miniBatchSize, ...
-    InitialLearnRate    = cfg.InitialLearnRate, ...
-    LearnRateSchedule   = "piecewise", ...
-    LearnRateDropPeriod = cfg.LearnRateDropPeriod, ...
-    LearnRateDropFactor = cfg.LearnRateDropFactor, ...
-    Shuffle             = "every-epoch", ...
-    OutputNetwork       = "best-validation-loss", ...
+opts = trainingOptions(cfg.training.optimizer, ...
+    MaxEpochs           = cfg.training.maxEpochs, ...
+    MiniBatchSize       = cfg.training.miniBatchSize, ...
+    InitialLearnRate    = cfg.training.initialLearnRate, ...
+    LearnRateSchedule   = cfg.training.learnRateSchedule, ...
+    LearnRateDropPeriod = cfg.training.learnRateDropPeriod, ...
+    LearnRateDropFactor = cfg.training.learnRateDropFactor, ...
+    Shuffle             = cfg.training.shuffle, ...
+    OutputNetwork       = cfg.training.outputNetwork, ...
     ValidationData      = {inputMtxValN, outputMtxValN}, ...
     ValidationFrequency = valFrequency, ...
-    ValidationPatience  = cfg.ValidationPatience, ...
-    InputDataFormats    = "BC", ...
-    TargetDataFormats   = "BC", ...
-    ExecutionEnvironment= "auto", ...
-    Plots               = string(cfg.trainingPlots), ...
-    Verbose             = cfg.verbose, ...
+    ValidationPatience  = cfg.training.validationPatience, ...
+    InputDataFormats    = cfg.training.inputDataFormats, ...
+    TargetDataFormats   = cfg.training.targetDataFormats, ...
+    ExecutionEnvironment= cfg.training.executionEnvironment, ...
+    Plots               = string(cfg.training.trainingPlots), ...
+    Verbose             = cfg.training.verbose, ...
     VerboseFrequency    = valFrequency);
 
 [netDPD, info] = trainnet(inputMtxTrainN, outputMtxTrainN, layers, "mse", opts);
@@ -326,42 +278,42 @@ fprintf("NMSE validación (TEST)          = %.2f dB\n", NMSE_test);
 
 %% ======================= GUARDADO =======================
 metadata = struct();
-metadata.measfilename = cfg.measfilename;
-metadata.blockName = cfg.blockName;
-metadata.modelado = cfg.modelado;
-metadata.mappingMode = cfg.mappingMode;
+metadata.measfilename = cfg.data.measurementName;
+metadata.blockName = cfg.data.blockName;
+metadata.modelado = cfg.data.modelado;
+metadata.mappingMode = cfg.data.mappingMode;
 metadata.fs = fsUsed;
-metadata.temporalExtension = "periodic";
-metadata.M = cfg.M;
-metadata.orders = cfg.orders;
-metadata.featMode = cfg.featMode;
+metadata.temporalExtension = string(cfg.model.temporalExtension);
+metadata.M = cfg.model.M;
+metadata.orders = cfg.model.orders;
+metadata.featMode = cfg.model.featMode;
 metadata.inputDim = inputDim;
-metadata.numNeurons = cfg.numNeurons;
-metadata.actType = cfg.actType;
+metadata.numNeurons = cfg.model.numNeurons;
+metadata.actType = cfg.model.actType;
 metadata.totalParams = totalParams;
-metadata.dataDivision = cfg.dataDivision;
-metadata.trainRatio = cfg.trainRatio;
-metadata.valRatio = cfg.valRatio;
-metadata.testRatio = cfg.testRatio;
-metadata.splitSeed = cfg.splitSeed;
-metadata.maxEpochs = cfg.maxEpochs;
-metadata.miniBatchSize = cfg.miniBatchSize;
-metadata.InitialLearnRate = cfg.InitialLearnRate;
-metadata.LearnRateDropPeriod = cfg.LearnRateDropPeriod;
-metadata.LearnRateDropFactor = cfg.LearnRateDropFactor;
-metadata.ValidationPatience = cfg.ValidationPatience;
+metadata.dataDivision = cfg.split.method;
+metadata.trainRatio = cfg.split.trainRatio;
+metadata.valRatio = cfg.split.valRatio;
+metadata.testRatio = cfg.split.testRatio;
+metadata.splitSeed = cfg.split.seed;
+metadata.maxEpochs = cfg.training.maxEpochs;
+metadata.miniBatchSize = cfg.training.miniBatchSize;
+metadata.InitialLearnRate = cfg.training.initialLearnRate;
+metadata.LearnRateDropPeriod = cfg.training.learnRateDropPeriod;
+metadata.LearnRateDropFactor = cfg.training.learnRateDropFactor;
+metadata.ValidationPatience = cfg.training.validationPatience;
 metadata.Ns = Ns;
 metadata.NTrain = numel(idxTrain);
 metadata.NVal = numel(idxVal);
 metadata.NTest = numel(idxTest);
 metadata.NMSE_trainVal = NMSE_trainVal;
 metadata.NMSE_test = NMSE_test;
-metadata.runGMPBaseline = cfg.runGMPBaseline;
+metadata.runGMPBaseline = cfg.gmp.runBaseline;
 metadata.NMSE_GMP_val_pinv = NMSE_val_GMP;
 metadata.NMSE_GMP_val_ridge_1e3 = NMSE_val_ridge_1e3;
 metadata.NMSE_GMP_val_ridge_1e4 = NMSE_val_ridge_1e4;
-metadata.runGMPJusto = cfg.runGMPJusto;
-if cfg.runGMPJusto && isfield(resGMP, 'NMSE_test_pinv')
+metadata.runGMPJusto = cfg.gmp.runJusto;
+if cfg.gmp.runJusto && isfield(resGMP, 'NMSE_test_pinv')
     metadata.NMSE_GMP_justo_trainVal_pinv = resGMP.NMSE_trainVal_pinv;
     metadata.NMSE_GMP_justo_test_pinv = resGMP.NMSE_test_pinv;
     metadata.NMSE_GMP_justo_trainVal_ridge_1e3 = resGMP.NMSE_trainVal_ridge_1e3;
@@ -401,24 +353,25 @@ metadata.pruning_maskIntegrityOk = pruningStats.maskIntegrityOk;
 metadata.pruning_maskIntegrityStage = pruningStats.maskIntegrityStage;
 metadata.pruning_parameterNames = strjoin(string(pruningStats.parameterNames), ", ");
 metadata.timeStamp = datestr(now);
-metadata.description = sprintf("NN-DPD phase-normalized offline. mapping=%s, temporal=periodic, featMode=%s, M=%d, orders=%s, NMSE_test=%.2f dB.", ...
-    cfg.mappingMode, cfg.featMode, cfg.M, mat2str(cfg.orders), NMSE_test);
+metadata.description = sprintf("NN-DPD phase-normalized offline. mapping=%s, temporal=%s, featMode=%s, M=%d, orders=%s, NMSE_test=%.2f dB.", ...
+    cfg.data.mappingMode, cfg.model.temporalExtension, cfg.model.featMode, ...
+    cfg.model.M, mat2str(cfg.model.orders), NMSE_test);
 
-[primaryOutputField, aliasOutputFields] = deployOutputFieldsFromMapping(cfg.mappingMode);
+[primaryOutputField, aliasOutputFields] = deployOutputFieldsFromMapping(cfg.data.mappingMode);
 
 deploy = struct();
 deploy.netDPD = netDPD;
 deploy.normStats = normStats;
 deploy.cfgDeploy = struct();
-deploy.cfgDeploy.M = cfg.M;
-deploy.cfgDeploy.orders = cfg.orders;
-deploy.cfgDeploy.featMode = cfg.featMode;
-deploy.cfgDeploy.mappingMode = cfg.mappingMode;
-deploy.cfgDeploy.blockName = cfg.blockName;
-deploy.cfgDeploy.modelado = cfg.modelado;
-deploy.cfgDeploy.temporalExtension = 'periodic';
-deploy.cfgDeploy.removeDC = true;
-deploy.cfgDeploy.inputFieldCandidates = inputFieldCandidatesFromMapping(cfg.mappingMode);
+deploy.cfgDeploy.M = cfg.model.M;
+deploy.cfgDeploy.orders = cfg.model.orders;
+deploy.cfgDeploy.featMode = cfg.model.featMode;
+deploy.cfgDeploy.mappingMode = cfg.data.mappingMode;
+deploy.cfgDeploy.blockName = cfg.data.blockName;
+deploy.cfgDeploy.modelado = cfg.data.modelado;
+deploy.cfgDeploy.temporalExtension = cfg.model.temporalExtension;
+deploy.cfgDeploy.removeDC = cfg.model.removeDC;
+deploy.cfgDeploy.inputFieldCandidates = inputFieldCandidatesFromMapping(cfg.data.mappingMode);
 deploy.cfgDeploy.outputFieldName = primaryOutputField; % campo legado
 deploy.cfgDeploy.primaryOutputField = primaryOutputField;
 deploy.cfgDeploy.aliasOutputFields = aliasOutputFields;

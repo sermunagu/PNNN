@@ -13,15 +13,19 @@ scriptDir = fileparts(mfilename('fullpath'));
 if isempty(scriptDir), scriptDir = pwd; end
 addpath(genpath(scriptDir));
 
+baseCfg = getPNNNConfig(scriptDir);
 cfg = struct();
-cfg.deployPackage = ""; % Si está vacío, usa el deploy_package.mat más reciente en results/
-cfg.inputXyFile = fullfile(scriptDir, 'measurements', 'experiment20260429T134032_xy.mat');
-cfg.outputFolder = fullfile(scriptDir, 'generated_outputs');
-cfg.outputFileSuffix = '_pnnn_output.mat';
-cfg.saveMetadata = true;
+cfg.deployPackage = baseCfg.output.deployPackage; % Si está vacío, usa el deploy_package.mat más reciente en results/
+cfg.inputXyFile = baseCfg.data.measurementFile;
+cfg.outputFolder = baseCfg.paths.generatedOutputsDir;
+cfg.outputFileSuffix = baseCfg.output.onlineOutputFileSuffix;
+cfg.saveMetadata = baseCfg.output.saveMetadata;
+cfg.defaultPrimaryOutputField = baseCfg.output.primaryOutputField;
+cfg.defaultAliasOutputFields = baseCfg.output.aliasOutputFields;
+cfg.outputSemanticsPrefix = baseCfg.output.outputSemanticsPrefix;
 
 if strlength(string(cfg.deployPackage)) == 0
-    cfg.deployPackage = findLatestDeployPackage(fullfile(scriptDir, 'results'));
+    cfg.deployPackage = findLatestDeployPackage(baseCfg.paths.resultsDir);
 end
 
 if ~exist(cfg.outputFolder, 'dir')
@@ -53,8 +57,11 @@ end
 
 cfgD.inputFieldCandidates = normalizeInputFieldCandidates(cfgD.mappingMode, ...
     getCfgField(cfgD, 'inputFieldCandidates', {}));
+if ~isfield(cfgD, 'aliasOutputFields')
+    cfgD.aliasOutputFields = cfg.defaultAliasOutputFields;
+end
 if ~isfield(cfgD, 'removeDC')
-    cfgD.removeDC = true;
+    cfgD.removeDC = baseCfg.model.removeDC;
 end
 
 %% ======================= CARGA ENTRADA =======================
@@ -111,7 +118,7 @@ fprintf('Tiempo de inferencia: %.6f s\n', inferenceTimeSeconds);
 outFile = fullfile(cfg.outputFolder, [inName cfg.outputFileSuffix]);
 
 primaryOutputField = getCfgString(cfgD, 'primaryOutputField', ...
-    getCfgString(cfgD, 'outputFieldName', 'yhat'));
+    getCfgString(cfgD, 'outputFieldName', cfg.defaultPrimaryOutputField));
 
 if strcmp(string(cfgD.mappingMode), "xy_forward") && ismember(primaryOutputField, {'x','xi','x_in','input'})
     warning(['El deploy package declara "%s" como campo primario, pero mappingMode=xy_forward ' ...
@@ -153,11 +160,12 @@ outputStruct.orders = cfgD.orders;
 outputStruct.featMode = cfgD.featMode;
 outputStruct.mappingMode = cfgD.mappingMode;
 outputStruct.blockName = cfgD.blockName;
-outputStruct.temporalExtension = 'periodic';
+outputStruct.temporalExtension = getCfgString(cfgD, 'temporalExtension', baseCfg.model.temporalExtension);
 outputStruct.removeDC = cfgD.removeDC;
 outputStruct.inferenceTimeSeconds = inferenceTimeSeconds;
 outputStruct.primaryOutputField = primaryOutputField;
-outputStruct.outputSemantics = sprintf('Phase-normalized NN output. mappingMode=%s.', char(string(cfgD.mappingMode)));
+outputStruct.outputSemantics = sprintf('%s. mappingMode=%s.', ...
+    cfg.outputSemanticsPrefix, char(string(cfgD.mappingMode)));
 
 if isfield(Sxy,'fs')
     outputStruct.fs = Sxy.fs;
@@ -223,17 +231,6 @@ if ~isempty(candidates)
             fields{end+1} = field; %#ok<AGROW>
         end
     end
-end
-end
-
-function fields = inputFieldCandidatesFromMapping(mappingMode)
-switch string(mappingMode)
-    case "xy_forward"
-        fields = {'x','xi','x_in','input'};
-    case "yx_inverse"
-        fields = {'y','y_in','output','target'};
-    otherwise
-        error("mappingMode debe ser 'xy_forward' o 'yx_inverse'.");
 end
 end
 
