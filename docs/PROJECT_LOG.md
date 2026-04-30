@@ -692,6 +692,41 @@ Pendiente:
 
 ---
 
+### 2026-04-30 — Limpieza de duplicado documental iCloud
+
+Objetivo:
+- Eliminar un duplicado documental desactualizado y aclarar el estado operativo actual del entrenamiento.
+
+Archivos modificados:
+- `README.md`
+- `AGENTS.md`
+- `docs/CODEX_WORKFLOW.md`
+- `docs/PROJECT_LOG.md`
+
+Archivo eliminado:
+- `docs/PROJECT_LOG(1).md`
+
+Cambios realizados:
+- Se eliminó `docs/PROJECT_LOG(1).md` tras confirmar que era un duplicado/conflicto desactualizado frente a `docs/PROJECT_LOG.md`.
+- Se documentó que la ruta oficial actual del repo es `C:\Sergi\Investigacion\Códigos\NN\PNNN`.
+- Se dejó indicado que `measurements/` y `results/` se mantienen locales e ignorados por Git.
+- Se añadió una nota breve indicando que `train_PNNN_offline.m` tiene pruning activado por defecto con `cfg.pruning.enabled = true` y `cfg.pruning.sparsity = 0.3`.
+- No se cambiaron código funcional, arquitectura, features, normalización, split, `mappingMode` ni semántica X/Y.
+
+Comandos ejecutados por Codex:
+- Validaciones Git ligeras.
+- `git rm docs/PROJECT_LOG(1).md`.
+
+Resultados:
+- No se ejecutó MATLAB.
+- No se ejecutaron entrenamientos, inferencias ni sweep.
+- No se tocaron `measurements/`, `results/`, `generated_outputs/`, `.mat`, `.fig`, `deploy_package.mat` ni outputs experimentales.
+
+Pendiente:
+- Revisar y confirmar el diff antes de hacer commit.
+
+---
+
 ## Plantilla para futuras entradas
 
 Copiar y rellenar esta plantilla después de cada intervención relevante:

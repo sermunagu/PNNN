@@ -82,6 +82,8 @@ Entrenamiento:
 matlab -batch "train_PNNN_offline"
 ```
 
+Nota actual: `train_PNNN_offline.m` tiene pruning activado por defecto con `cfg.pruning.enabled = true` y `cfg.pruning.sparsity = 0.3`. Si se quiere un baseline sin pruning, hay que desactivarlo explícitamente o usar overrides/configuración adecuada antes de ejecutar.
+
 Inferencia:
 
 ```powershell

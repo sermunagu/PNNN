@@ -114,6 +114,10 @@ matlab -batch "train_PNNN_offline"
 matlab -batch "run_PNNN_online_from_xy"
 ```
 
+Nota operativa actual:
+- `train_PNNN_offline.m` tiene pruning activado por defecto con `cfg.pruning.enabled = true` y `cfg.pruning.sparsity = 0.3`.
+- Para obtener un baseline sin pruning, hay que desactivarlo explícitamente o usar overrides/configuración adecuada antes de ejecutar.
+
 Después, el usuario pegará los resultados para interpretarlos.
 
 Codex no debe lanzar estos comandos salvo permiso explícito.

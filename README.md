@@ -11,6 +11,7 @@ El proyecto se llamaba antes `NN_DPD`. Ese nombre puede aparecer en rutas o resu
 ## Scripts Principales
 
 - `train_PNNN_offline.m`: flujo offline recomendado. Entrena la NN phase-normalized desde una medida `x/y` y guarda `model.mat`, `predictions.mat`, `metadata.txt` y `deploy_package.mat`.
+  Nota actual: este script tiene pruning activado por defecto con `cfg.pruning.enabled = true` y `cfg.pruning.sparsity = 0.3`. Para obtener un baseline sin pruning, hay que desactivarlo explícitamente o usar overrides/configuración adecuada antes de ejecutar.
 - `run_PNNN_online_from_xy.m`: flujo online recomendado. Carga `deploy_package.mat`, lee un nuevo fichero `x/y`, aplica la red y guarda la señal estimada.
 - `legacy/main.m`: flujo histórico monolítico de un experimento.
 - `legacy/main_bucle.m`: flujo histórico de barrido de activaciones y arquitecturas.
