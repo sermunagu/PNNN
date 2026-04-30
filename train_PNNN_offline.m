@@ -444,21 +444,6 @@ finalSummary.txtFile = txtFile;
 printFinalPNNNSummary(finalSummary);
 
 %% ======================= FUNCIONES LOCALES =======================
-function [x_in, y_out] = selectXYByMapping(x, y, mappingMode)
-x = x(:);
-y = y(:);
-switch string(mappingMode)
-    case "xy_forward"
-        x_in = x;
-        y_out = y;
-    case "yx_inverse"
-        x_in = y;
-        y_out = x;
-    otherwise
-        error("mappingMode debe ser 'xy_forward' o 'yx_inverse'.");
-end
-end
-
 function layers = buildLayers(inputDim, numNeurons, actType)
 layers = [
     featureInputLayer(inputDim, Name="input")
@@ -481,28 +466,4 @@ for i = 1:numel(numNeurons)
 end
 
 layers = [layers fullyConnectedLayer(2, Name="fcOut")];
-end
-
-function fields = inputFieldCandidatesFromMapping(mappingMode)
-switch string(mappingMode)
-    case "xy_forward"
-        fields = {'x','xi','x_in','input'};
-    case "yx_inverse"
-        fields = {'y','y_in','output','target'};
-    otherwise
-        error("mappingMode debe ser 'xy_forward' o 'yx_inverse'.");
-end
-end
-
-function [primaryOutputField, aliasOutputFields] = deployOutputFieldsFromMapping(mappingMode)
-switch string(mappingMode)
-    case "xy_forward"
-        primaryOutputField = 'yhat';
-        aliasOutputFields = {'y_model','y_nn'};
-    case "yx_inverse"
-        primaryOutputField = 'x';
-        aliasOutputFields = {'xhat','xi','yhat'};
-    otherwise
-        error("mappingMode debe ser 'xy_forward' o 'yx_inverse'.");
-end
 end

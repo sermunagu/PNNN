@@ -17,7 +17,17 @@ El proyecto se llamaba antes `NN_DPD`. Ese nombre puede aparecer en rutas o resu
 - `toolbox/phase_norm/buildPhaseNormDataset.m`: constructor compartido de features.
 - `toolbox/phase_norm/buildPhaseNormInput.m`: constructor de features sin target para online.
 - `toolbox/phase_norm/predictPhaseNorm.m`: reconstrucción compleja de la predicción phase-normalized.
-- `toolbox/splitTrainValTest.m`: particionado train/val/test reproducible.
+- `toolbox/data/splitTrainValTest.m`: particionado train/val/test reproducible.
+- `toolbox/metrics/calc_NMSE.m`: métrica NMSE en frecuencia para análisis.
+- `toolbox/reporting/printFinalPNNNSummary.m`: resumen final por consola.
+- `toolbox/io/`: helpers de selección X/Y y metadata/deploy.
+
+## Documentación Interna
+
+- `docs/PROJECT_LOG.md`: memoria cronológica de intervenciones.
+- `docs/RESULTS_INDEX.md`: índice de resultados, modelos y métricas.
+- `docs/CODEX_WORKFLOW.md`: flujo recomendado de trabajo con Codex.
+- `docs/README_legacy.txt`: copia textual legacy del README.
 
 ## Convenciones X/Y
 

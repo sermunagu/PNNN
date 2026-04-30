@@ -65,7 +65,7 @@ Para cada tarea:
 4. Hacer cambios pequeños y entendibles.
 5. Mostrar un resumen de cambios.
 6. Mostrar los diffs relevantes o indicar exactamente cómo verlos.
-7. Actualizar `PROJECT_LOG.md` con lo realizado.
+7. Actualizar `docs/PROJECT_LOG.md` con lo realizado.
 8. Indicar qué queda pendiente.
 
 ---
@@ -135,8 +135,8 @@ Codex no debe lanzar estos comandos salvo permiso explícito.
 Cuando se cambie comportamiento del código, actualizar documentación relacionada si existe:
 
 - `README.md`
-- `README.txt`
-- `PROJECT_LOG.md`
+- `docs/README_legacy.txt`
+- `docs/PROJECT_LOG.md`
 - informes `.tex`
 - notas de resultados
 - índices de resultados
@@ -200,7 +200,7 @@ Una tarea se considera terminada cuando:
 - el código queda entendible;
 - se han explicado los cambios;
 - se ha indicado cómo probarlo;
-- se ha actualizado `PROJECT_LOG.md`;
+- se ha actualizado `docs/PROJECT_LOG.md`;
 - se ha mostrado `git diff --stat`;
 - no quedan cambios ocultos o ambiguos;
 - se indica claramente qué debe ejecutar el usuario, si aplica.

@@ -15,8 +15,8 @@ El proyecto se llamaba antes `NN_DPD`, pero los scripts operativos actuales son 
 Los ficheros principales para guiar a Codex son:
 
 - `AGENTS.md`: reglas permanentes de trabajo.
-- `PROJECT_LOG.md`: memoria técnica del proyecto.
-- `RESULTS_INDEX.md`: índice rápido de resultados.
+- `docs/PROJECT_LOG.md`: memoria técnica del proyecto.
+- `docs/RESULTS_INDEX.md`: índice rápido de resultados.
 
 ---
 
@@ -30,7 +30,7 @@ No ejecutes MATLAB.
 No hagas cambios grandes.
 Propón un plan corto.
 Haz el cambio mínimo.
-Actualiza PROJECT_LOG.md.
+Actualiza docs/PROJECT_LOG.md.
 Muestra git diff --stat y los diffs relevantes.
 ```
 
@@ -44,7 +44,7 @@ Formato recomendado:
 Te pego la salida de MATLAB.
 No cambies código.
 Interpreta los resultados.
-Actualiza PROJECT_LOG.md y RESULTS_INDEX.md si procede.
+Actualiza docs/PROJECT_LOG.md y docs/RESULTS_INDEX.md si procede.
 Dime qué conclusión técnica puedo sacar.
 ```
 

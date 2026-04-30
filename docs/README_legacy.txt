@@ -23,7 +23,10 @@ Scripts principales
 - toolbox/phase_norm/buildPhaseNormDataset.m: constructor compartido de features.
 - toolbox/phase_norm/buildPhaseNormInput.m: constructor de features sin target para online.
 - toolbox/phase_norm/predictPhaseNorm.m: reconstrucción compleja de la predicción phase-normalized.
-- toolbox/splitTrainValTest.m: particionado train/val/test reproducible.
+- toolbox/data/splitTrainValTest.m: particionado train/val/test reproducible.
+- toolbox/metrics/calc_NMSE.m: métrica NMSE en frecuencia para análisis.
+- toolbox/reporting/printFinalPNNNSummary.m: resumen final por consola.
+- toolbox/io/: helpers de selección X/Y y metadata/deploy.
 
 Convenciones
 ------------

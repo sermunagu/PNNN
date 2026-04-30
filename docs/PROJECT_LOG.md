@@ -542,6 +542,47 @@ Pendiente:
 
 ---
 
+### 2026-04-30 — Organización de docs y toolbox
+
+Objetivo:
+- Ordenar documentación en `docs/`, reorganizar helpers restantes de `toolbox/` y extraer helpers IO seguros desde `train_PNNN_offline.m`.
+
+Archivos movidos:
+- `PROJECT_LOG.md` -> `docs/PROJECT_LOG.md`
+- `RESULTS_INDEX.md` -> `docs/RESULTS_INDEX.md`
+- `CODEX_WORKFLOW.md` -> `docs/CODEX_WORKFLOW.md`
+- `README.txt` -> `docs/README_legacy.txt`
+- `toolbox/calc_NMSE.m` -> `toolbox/metrics/calc_NMSE.m`
+- `toolbox/splitTrainValTest.m` -> `toolbox/data/splitTrainValTest.m`
+- `toolbox/printFinalPNNNSummary.m` -> `toolbox/reporting/printFinalPNNNSummary.m`
+
+Archivos nuevos:
+- `toolbox/io/inputFieldCandidatesFromMapping.m`
+- `toolbox/io/deployOutputFieldsFromMapping.m`
+- `toolbox/io/selectXYByMapping.m`
+
+Cambios realizados:
+- Se dejaron en raíz `README.md` y `AGENTS.md`.
+- Se movió `README.txt` a `docs/README_legacy.txt` como copia textual legacy.
+- Se extrajeron helpers IO desde `train_PNNN_offline.m` manteniendo nombres y firmas.
+- Se mantuvo `buildLayers` como función local porque está ligada a la arquitectura del script.
+- Se actualizaron referencias operativas en `README.md`, `AGENTS.md` y `docs/CODEX_WORKFLOW.md`.
+
+Comandos ejecutados por Codex:
+- `git mv` para movimientos de archivos trackeados.
+- Validaciones Git ligeras.
+- Prueba MATLAB ligera con `which(...)` para resolución de path.
+
+Resultados:
+- No se ejecutaron entrenamientos ni inferencias.
+- No se cambiaron cálculos, entrenamiento, pruning/fine-tuning, features, split, `mappingMode`, normalización ni semántica X/Y.
+- No se generaron medidas, resultados, modelos, figuras ni deploy packages nuevos.
+
+Pendiente:
+- Revisar en una fase posterior si los helpers GMP de `toolbox/buildX_GMP*.m` deben permanecer en raíz o moverse a un módulo GMP dedicado.
+
+---
+
 ## Plantilla para futuras entradas
 
 Copiar y rellenar esta plantilla después de cada intervención relevante:
