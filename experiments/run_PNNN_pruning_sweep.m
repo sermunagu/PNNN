@@ -83,7 +83,7 @@ end
 
 sweepSummary = pnnnPerformanceToTable(performanceStack);
 sweepSummary = addSweepBaselineGain(sweepSummary);
-sweepSummaryCompact = buildSweepSummaryCompact(sweepSummary);
+sweepSummaryCompact = pnnnPerformanceCompactTable(sweepSummary);
 disp(sweepSummaryCompact);
 exportSweepSummary(sweepSummary, performanceStack, sweepFolder, ...
     baseCfg.sweep.exportFigure);
@@ -179,38 +179,6 @@ end
 
 if nargin >= 4 && exportFigure
     pnnnPerformanceFigure(sweepSummary, sweepFolder, 'sweep_summary_table');
-end
-end
-
-function compactTable = buildSweepSummaryCompact(sweepSummary)
-compactTable = table();
-compactTable.SparsityTarget_pct = tableColumnOrDefault(sweepSummary, ...
-    'SparsityTarget_pct', NaN(height(sweepSummary), 1));
-compactTable.SparsityActual_pct = tableColumnOrDefault(sweepSummary, ...
-    'SparsityActual_pct', NaN(height(sweepSummary), 1));
-compactTable.PrunedParams = tableColumnOrDefault(sweepSummary, ...
-    'PrunedParams', NaN(height(sweepSummary), 1));
-compactTable.RemainingParams = tableColumnOrDefault(sweepSummary, ...
-    'RemainingParams', NaN(height(sweepSummary), 1));
-compactTable.NMSE_TrainVal_dB = tableColumnOrDefault(sweepSummary, ...
-    'NMSE_TrainVal_dB', NaN(height(sweepSummary), 1));
-compactTable.NMSE_Test_dB = tableColumnOrDefault(sweepSummary, ...
-    'NMSE_Test_dB', NaN(height(sweepSummary), 1));
-compactTable.GainNMSE_Test_vs_Baseline_dB = tableColumnOrDefault( ...
-    sweepSummary, 'GainNMSE_Test_vs_Baseline_dB', NaN(height(sweepSummary), 1));
-compactTable.MaskIntegrityStatus = tableColumnOrDefault(sweepSummary, ...
-    'MaskIntegrityStatus', strings(height(sweepSummary), 1));
-compactTable.FineTuneEpochs = tableColumnOrDefault(sweepSummary, ...
-    'PruningFineTuneEpochs', NaN(height(sweepSummary), 1));
-compactTable.FineTuneBestEpoch = tableColumnOrDefault(sweepSummary, ...
-    'PruningFineTuneBestEpoch', NaN(height(sweepSummary), 1));
-end
-
-function values = tableColumnOrDefault(summaryTable, columnName, defaultValues)
-if any(strcmp(summaryTable.Properties.VariableNames, columnName))
-    values = summaryTable.(columnName);
-else
-    values = defaultValues;
 end
 end
 

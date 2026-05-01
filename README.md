@@ -31,7 +31,8 @@ El proyecto se llamaba antes `NN_DPD`. Ese nombre puede aparecer en rutas o resu
 - `toolbox/reporting/buildPNNNPerformanceSummary.m`: resumen ligero de rendimiento por experimento, sin señales pesadas.
 - `toolbox/reporting/savePNNNPerformanceSummary.m`: exporta `performance_summary.mat`, `.csv` y `.txt`.
 - `toolbox/reporting/pnnnPerformanceToTable.m`: convierte summaries individuales o apilados en tabla.
-- `toolbox/reporting/loadPNNNPerformanceSummaries.m`: carga uno o varios `performance_summary.mat` y devuelve `[performanceStack, performanceTable]`.
+- `toolbox/reporting/pnnnPerformanceCompactTable.m`: genera una tabla compacta DPD-facing desde un summary o desde la tabla larga.
+- `toolbox/reporting/loadPNNNPerformanceSummaries.m`: carga uno o varios `performance_summary.mat` y devuelve `[performanceStack, performanceTable, compactTable]`.
 - `toolbox/reporting/pnnnPerformanceFigure.m`: exportación visual opcional y silenciosa de tablas de performance.
 - `toolbox/io/`: helpers de selección X/Y y metadata/deploy.
 - `experiments/run_PNNN_pruning_sweep.m`: barrido secuencial de sparsity para pruning.
@@ -71,7 +72,15 @@ performanceTable = pnnnPerformanceToTable(S.performance);
 Para cargar varios summaries desde una carpeta, patrón o lista de ficheros:
 
 ```matlab
-[performanceStack, performanceTable] = loadPNNNPerformanceSummaries('ruta/a/resultados');
+[performanceStack, performanceTable, compactTable] = loadPNNNPerformanceSummaries('ruta/a/resultados');
+disp(compactTable);
+```
+
+También se puede pedir la tabla compacta desde un fichero concreto:
+
+```matlab
+[P, T, Tcompact] = loadPNNNPerformanceSummaries('ruta/al/experimento/performance_summary.mat');
+disp(Tcompact);
 ```
 
 Los sweeps guardan `performance_stack.mat`; también se puede convertir directamente:

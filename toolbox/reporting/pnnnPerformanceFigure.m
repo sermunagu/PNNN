@@ -27,7 +27,7 @@ try
         mkdir(outputFolder);
     end
 
-    visualTable = compactPerformanceTable(performanceTable);
+    visualTable = pnnnPerformanceCompactTable(performanceTable);
     tableLines = tableToTextLines(visualTable);
     figFile = fullfile(outputFolder, [char(string(baseName)) '.fig']);
     pngFile = fullfile(outputFolder, [char(string(baseName)) '.png']);
@@ -69,23 +69,6 @@ try
 catch ME
     ok = false;
     message = string(ME.message);
-end
-end
-
-function visualTable = compactPerformanceTable(performanceTable)
-columns = {'SparsityTarget_pct', 'SparsityActual_pct', 'PrunedParams', ...
-    'RemainingParams', 'NMSE_TrainVal_dB', 'NMSE_Test_dB', ...
-    'GainNMSE_Test_vs_Baseline_dB', 'MaskIntegrityStatus', ...
-    'PruningFineTuneEpochs', 'PruningFineTuneBestEpoch'};
-visualTable = table();
-for k = 1:numel(columns)
-    columnName = columns{k};
-    if any(strcmp(performanceTable.Properties.VariableNames, columnName))
-        visualTable.(columnName) = performanceTable.(columnName);
-    end
-end
-if width(visualTable) == 0
-    visualTable = performanceTable(:, 1:min(width(performanceTable), 8));
 end
 end
 

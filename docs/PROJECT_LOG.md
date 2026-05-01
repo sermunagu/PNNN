@@ -898,6 +898,41 @@ Pendiente:
 
 ---
 
+### 2026-05-01 — Tabla compacta pública de performance
+
+Objetivo:
+- Exponer la tabla compacta de performance como función pública MATLAB para inspección directa con `disp(...)`.
+
+Archivos nuevos:
+- `toolbox/reporting/pnnnPerformanceCompactTable.m`
+
+Archivos modificados:
+- `toolbox/reporting/pnnnPerformanceFigure.m`
+- `toolbox/reporting/loadPNNNPerformanceSummaries.m`
+- `experiments/run_PNNN_pruning_sweep.m`
+- `README.md`
+- `docs/PROJECT_LOG.md`
+
+Cambios realizados:
+- `pnnnPerformanceCompactTable.m` acepta un struct `performance`, un array de structs o la tabla larga de `pnnnPerformanceToTable.m`.
+- La tabla compacta devuelve las columnas `Measurement`, `Sparsity`, `NMSE_Identificacion_dB`, `NMSE_Validacion_dB`, `Gain_Baseline_dB`, `Gain_GMP_dB`, `PAPR_Test_dB`, `Pruned`, `Remaining` y `Mask`.
+- `pnnnPerformanceFigure.m` y `experiments/run_PNNN_pruning_sweep.m` reutilizan la función pública en lugar de helpers locales duplicados.
+- `loadPNNNPerformanceSummaries.m` mantiene las dos salidas existentes y permite una tercera salida `compactTable`.
+- No se cambió la tabla larga, el struct `performance`, métricas, arquitectura, features, normalización, split, `mappingMode` ni semántica X/Y.
+
+Comandos ejecutados por Codex:
+- Checks Git ligeros.
+- `git diff --check` sobre los archivos tocados.
+- Smoke test MATLAB ligero cargando el último `performance_summary.mat` disponible y mostrando `Tcompact`, sin ejecutar entrenamiento, inferencia ni sweep.
+
+Resultados:
+- No se ejecutaron entrenamientos.
+- No se ejecutaron inferencias.
+- No se ejecutó pruning sweep.
+- No se modificaron `measurements/`, `results/`, `generated_outputs/`, `.mat`, `.fig`, `deploy_package.mat` ni outputs experimentales.
+
+---
+
 ## Plantilla para futuras entradas
 
 Copiar y rellenar esta plantilla después de cada intervención relevante:

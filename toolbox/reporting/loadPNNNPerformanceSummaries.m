@@ -1,8 +1,9 @@
-function [performanceStack, performanceTable] = loadPNNNPerformanceSummaries(source)
+function [performanceStack, performanceTable, compactTable] = loadPNNNPerformanceSummaries(source)
 % loadPNNNPerformanceSummaries - Load PNNN performance_summary.mat files.
 %
 % Accepts a folder, a wildcard pattern, or a list of performance_summary.mat
-% files. Invalid files are skipped with a short warning; an error is raised
+% files. Returns the full performance table and an optional compact DPD-facing
+% table. Invalid files are skipped with a short warning; an error is raised
 % only when no valid performance summary can be loaded.
 
 if nargin < 1 || isempty(source)
@@ -42,6 +43,7 @@ if invalidCount > 0
 end
 
 performanceTable = pnnnPerformanceToTable(performanceStack);
+compactTable = pnnnPerformanceCompactTable(performanceTable);
 end
 
 function files = resolveSummaryFiles(source)
