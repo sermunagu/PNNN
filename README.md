@@ -17,7 +17,7 @@ El proyecto se llamaba antes `NN_DPD`. Ese nombre puede aparecer en rutas o resu
 ## Scripts Principales
 
 - `config/getPNNNConfig.m`: configuración oficial centralizada de rutas, datos, split, modelo, entrenamiento, pruning, GMP y outputs.
-- `train_PNNN_offline.m`: flujo offline recomendado. Carga `config/getPNNNConfig.m`, entrena la NN phase-normalized desde una medida `x/y` y guarda `model.mat`, `predictions.mat`, `metadata.txt` y `deploy_package.mat`.
+- `train_PNNN_offline.m`: flujo offline recomendado. Carga `config/getPNNNConfig.m`, entrena la NN phase-normalized desde una medida `x/y` y guarda `model.mat`, `predictions.mat`, `metadata.txt`, `deploy_package.mat` y `performance_summary.*`.
   Nota actual: este script tiene pruning activado por defecto con `cfg.pruning.enabled = true` y `cfg.pruning.sparsity = 0.3`. Para obtener un baseline sin pruning, hay que desactivarlo explícitamente o usar overrides/configuración adecuada antes de ejecutar.
 - `run_PNNN_online_from_xy.m`: flujo online recomendado. Carga `deploy_package.mat`, lee un nuevo fichero `x/y`, aplica la red y guarda la señal estimada.
 - `legacy/main.m`: flujo histórico monolítico de un experimento.
@@ -28,6 +28,11 @@ El proyecto se llamaba antes `NN_DPD`. Ese nombre puede aparecer en rutas o resu
 - `toolbox/data/splitTrainValTest.m`: particionado train/val/test reproducible.
 - `toolbox/metrics/calc_NMSE.m`: métrica NMSE en frecuencia para análisis.
 - `toolbox/reporting/printFinalPNNNSummary.m`: resumen final por consola.
+- `toolbox/reporting/buildPNNNPerformanceSummary.m`: resumen ligero de rendimiento por experimento, sin señales pesadas.
+- `toolbox/reporting/savePNNNPerformanceSummary.m`: exporta `performance_summary.mat`, `.csv` y `.txt`.
+- `toolbox/reporting/pnnnPerformanceToTable.m`: convierte summaries individuales o apilados en tabla.
+- `toolbox/reporting/loadPNNNPerformanceSummaries.m`: carga uno o varios `performance_summary.mat` y devuelve `[performanceStack, performanceTable]`.
+- `toolbox/reporting/pnnnPerformanceFigure.m`: exportación visual opcional y silenciosa de tablas de performance.
 - `toolbox/io/`: helpers de selección X/Y y metadata/deploy.
 - `experiments/run_PNNN_pruning_sweep.m`: barrido secuencial de sparsity para pruning.
 
@@ -53,6 +58,28 @@ Operativamente:
 - `mappingMode="yx_inverse"` entrena `y -> x`.
 
 La normalización de fase usa `r = conj(x(n))/abs(x(n))`. La red predice `r*y(n)` y la reconstrucción vuelve al plano complejo como `conj(r)*pred`.
+
+## Performance Summaries
+
+Cada entrenamiento offline guarda un resumen ligero de rendimiento en `performance_summary.mat`, `performance_summary.csv` y `performance_summary.txt`. Para cargar una tabla MATLAB nativa desde un experimento:
+
+```matlab
+S = load('ruta/al/experimento/performance_summary.mat', 'performance');
+performanceTable = pnnnPerformanceToTable(S.performance);
+```
+
+Para cargar varios summaries desde una carpeta, patrón o lista de ficheros:
+
+```matlab
+[performanceStack, performanceTable] = loadPNNNPerformanceSummaries('ruta/a/resultados');
+```
+
+Los sweeps guardan `performance_stack.mat`; también se puede convertir directamente:
+
+```matlab
+S = load('ruta/al/sweep/performance_stack.mat', 'performanceStack');
+sweepTable = pnnnPerformanceToTable(S.performanceStack);
+```
 
 ## Mantenimiento
 
@@ -81,17 +108,24 @@ results/pruning_sweeps/<timestamp>/
 
 Cada sweep genera una variable MATLAB nativa `sweepSummary` de tipo `table`, con una fila por sparsity. Además, exporta esa tabla completa como:
 
+- `performance_stack.mat`
 - `sweep_summary.mat`
 - `sweep_summary.csv`
 - `sweep_summary.xlsx`, si `writetable` puede escribir Excel en el entorno MATLAB disponible.
+
+Cada fila de `sweepSummary` sale del `performance_summary.mat` de su entrenamiento, no de parsing de consola. Los baselines GMP del sweep se guardan y reutilizan en una carpeta común:
+
+```text
+results/pruning_sweeps/<timestamp>/GMP_baselines/
+```
 
 Por consola se imprime una vista compacta `sweepSummaryCompact`, sin descripciones largas ni rutas completas, para revisar rápidamente sparsity, NMSE, ganancia frente al baseline, estado de máscara y fine-tuning.
 
 La columna `GainNMSE_Test_vs_Baseline_dB` se calcula como `NMSE_baseline - NMSE_actual`; por tanto, valores positivos indican mejora de NMSE TEST respecto al baseline sin pruning.
 
-También intenta generar una tabla visual reducida para informes o presentaciones:
+La tabla visual reducida para informes o presentaciones es opcional y se controla con `cfg.sweep.exportFigure`:
 
 - `sweep_summary_table.fig`
 - `sweep_summary_table.png`
 
-La exportación visual es opcional y depende del backend gráfico de MATLAB disponible en modo batch. El script intenta usar `exportapp` para tablas UI y cae a una figura de texto si hace falta; cualquier fallo de esa salida visual no debe detener el sweep. Todos estos archivos se escriben bajo `results/pruning_sweeps/<timestamp>/`, que no se versiona.
+La exportación visual usa un fallback silencioso; cualquier fallo gráfico no debe detener el sweep ni ensuciar la salida. Todos estos archivos se escriben bajo `results/pruning_sweeps/<timestamp>/`, que no se versiona.

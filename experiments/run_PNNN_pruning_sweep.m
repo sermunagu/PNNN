@@ -1,9 +1,9 @@
 % Script: run_PNNN_pruning_sweep
 %
 % This script runs sequential PNNN training jobs for a configured list of
-% pruning sparsities, collects each run into the sweepSummary table, and
-% saves sweep reports under results/pruning_sweeps/. It may take a long time
-% because every sparsity launches a full training run.
+% pruning sparsities, stacks each run performance_summary, and saves sweep
+% reports under results/pruning_sweeps/. It may take a long time because every
+% sparsity launches a full training run.
 
 clear; clc; close all;
 
@@ -14,11 +14,9 @@ baseCfg = getPNNNConfig(repoRoot);
 
 %% ======================= SWEEP CONFIG =======================
 % Edit this list to choose the pruning sparsities evaluated by the sweep.
-sparsityList = [0 0.1 0.2 0.3 0.4 0.5];
+sparsityList = [0 0.1 0.2 0.3 0.5 0.7];
 fineTuneEpochs = baseCfg.sweep.fineTuneEpochs;
-% Quick validation:
-% sparsityList = [0.0 0.3];
-% fineTuneEpochs = 20;
+
 includeBias = baseCfg.sweep.includeBias;
 freezePruned = baseCfg.sweep.freezePruned;
 pruningScope = baseCfg.sweep.pruningScope;
@@ -32,6 +30,8 @@ if ~exist(sweepFolder, 'dir')
     mkdir(sweepFolder);
 end
 
+gmpBaselineDir = fullfile(sweepFolder, char(baseCfg.gmp.baselineFolderName));
+
 sweepConfig = struct();
 sweepConfig.sparsityList = sparsityList;
 sweepConfig.fineTuneEpochs = fineTuneEpochs;
@@ -42,13 +42,15 @@ sweepConfig.measurementName = measurementName;
 sweepConfig.sweepOutputRoot = sweepOutputRoot;
 sweepConfig.timestamp = timestamp;
 sweepConfig.sweepFolder = sweepFolder;
+sweepConfig.gmpBaselineDir = gmpBaselineDir;
+sweepConfig.exportFigure = baseCfg.sweep.exportFigure;
 
 save(fullfile(sweepFolder, 'sweep_config.mat'), 'sweepConfig');
 writeSweepConfigTxt(fullfile(sweepFolder, 'sweep_config.txt'), sweepConfig);
 
 %% ======================= RUN SWEEP =======================
-sweepRows = repmat(emptySweepRow(), numel(sparsityList), 1);
-baselineNmseTest = NaN;
+performanceStack = struct([]);
+sweepSummary = table();
 
 for sweepIdx = 1:numel(sparsityList)
     sparsity = sparsityList(sweepIdx);
@@ -62,49 +64,43 @@ for sweepIdx = 1:numel(sparsityList)
         sweepIdx, numel(sparsityList));
     fprintf('Sparsity target : %.2f %%\n', 100 * sparsity);
     fprintf('Results root    : %s\n', runResultsRoot);
+    fprintf('GMP baseline dir: %s\n', gmpBaselineDir);
 
     cfgOverrides = buildSweepOverrides( ...
         measurementName, baseCfg.paths.measurementsDir, runResultsRoot, ...
-        sparsity, pruningScope, includeBias, freezePruned, fineTuneEpochs);
+        gmpBaselineDir, sparsity, pruningScope, includeBias, ...
+        freezePruned, fineTuneEpochs);
 
     train_PNNN_offline;
 
-    row = collectSweepMetrics(modelFile, deployFile, expFolder);
-    if row.Measurement == "N/A"
-        row.Measurement = string(measurementName);
-    end
-    if isnan(row.SparsityTarget_pct)
-        row.SparsityTarget_pct = 100 * sparsity;
-    end
-    if sparsity <= 0 && isfinite(row.NMSE_Test_dB)
-        baselineNmseTest = row.NMSE_Test_dB;
-    end
-    if isfinite(baselineNmseTest) && isfinite(row.NMSE_Test_dB)
-        % Positive values mean the current TEST NMSE improved over baseline.
-        row.GainNMSE_Test_vs_Baseline_dB = baselineNmseTest - row.NMSE_Test_dB;
-    end
-
-    sweepRows(sweepIdx) = row;
-    sweepSummary = struct2table(sweepRows(1:sweepIdx));
-    exportSweepSummary(sweepSummary, sweepFolder);
+    runPerformance = loadPerformanceSummary(performanceMatFile);
+    performanceStack = appendPerformance(performanceStack, runPerformance);
+    sweepSummary = pnnnPerformanceToTable(performanceStack);
+    sweepSummary = addSweepBaselineGain(sweepSummary);
+    exportSweepSummary(sweepSummary, performanceStack, sweepFolder, ...
+        baseCfg.sweep.exportFigure);
 end
 
-sweepSummary = struct2table(sweepRows);
+sweepSummary = pnnnPerformanceToTable(performanceStack);
+sweepSummary = addSweepBaselineGain(sweepSummary);
 sweepSummaryCompact = buildSweepSummaryCompact(sweepSummary);
 disp(sweepSummaryCompact);
-exportSweepSummary(sweepSummary, sweepFolder);
+exportSweepSummary(sweepSummary, performanceStack, sweepFolder, ...
+    baseCfg.sweep.exportFigure);
 
 fprintf('\nSweep summary saved in: %s\n', sweepFolder);
 
 %% ======================= LOCAL HELPERS =======================
-function cfgOverrides = buildSweepOverrides(measurementName, measurementFolder, runResultsRoot, ...
-    sparsity, pruningScope, includeBias, freezePruned, fineTuneEpochs)
+function cfgOverrides = buildSweepOverrides(measurementName, measurementFolder, ...
+    runResultsRoot, gmpBaselineDir, sparsity, pruningScope, includeBias, ...
+    freezePruned, fineTuneEpochs)
 
 cfgOverrides = struct();
 cfgOverrides.data.measurementName = measurementName;
 cfgOverrides.data.measurementFile = fullfile(measurementFolder, [measurementName '.mat']);
 cfgOverrides.paths.resultsDir = runResultsRoot;
 cfgOverrides.runtime.clearCommandWindow = false;
+cfgOverrides.gmp.baselineDir = gmpBaselineDir;
 
 cfgOverrides.pruning = struct();
 cfgOverrides.pruning.sparsity = sparsity;
@@ -123,121 +119,54 @@ else
 end
 end
 
-function row = collectSweepMetrics(modelFile, deployFile, resultFolder)
-row = emptySweepRow();
-row.ResultFolder = string(resultFolder);
-row.ModelFile = string(modelFile);
-row.DeployFile = string(deployFile);
+function performance = loadPerformanceSummary(performanceFile)
+if exist(performanceFile, 'file') ~= 2
+    error('run_PNNN_pruning_sweep:MissingPerformanceSummary', ...
+        'Missing performance summary: %s', performanceFile);
+end
 
-if exist(modelFile, 'file') ~= 2
+loadedData = load(performanceFile, 'performance');
+if ~isfield(loadedData, 'performance') || ~isstruct(loadedData.performance)
+    error('run_PNNN_pruning_sweep:InvalidPerformanceSummary', ...
+        'Invalid performance summary: %s', performanceFile);
+end
+performance = loadedData.performance;
+end
+
+function performanceStack = appendPerformance(performanceStack, runPerformance)
+if isempty(performanceStack)
+    performanceStack = runPerformance;
+else
+    [performanceStack, runPerformance] = alignStructFields( ...
+        performanceStack, runPerformance);
+    performanceStack = [performanceStack runPerformance]; %#ok<AGROW>
+end
+end
+
+function sweepSummary = addSweepBaselineGain(sweepSummary)
+if isempty(sweepSummary) || height(sweepSummary) == 0 || ...
+        ~any(strcmp(sweepSummary.Properties.VariableNames, 'NMSE_Test_dB')) || ...
+        ~any(strcmp(sweepSummary.Properties.VariableNames, 'SparsityTarget_pct'))
     return;
 end
 
-matVars = whos('-file', modelFile);
-matVarNames = {matVars.name};
-namesToLoad = {};
-if any(strcmp(matVarNames, 'metadata'))
-    namesToLoad{end + 1} = 'metadata';
-end
-if any(strcmp(matVarNames, 'pruningStats'))
-    namesToLoad{end + 1} = 'pruningStats';
-end
-
-if isempty(namesToLoad)
-    modelData = struct();
-else
-    modelData = load(modelFile, namesToLoad{:});
+gain = NaN(height(sweepSummary), 1);
+baselineIdx = find(sweepSummary.SparsityTarget_pct <= 0 & ...
+    isfinite(sweepSummary.NMSE_Test_dB), 1, 'first');
+if ~isempty(baselineIdx)
+    baselineNmse = sweepSummary.NMSE_Test_dB(baselineIdx);
+    for rowIdx = 1:height(sweepSummary)
+        if isfinite(sweepSummary.NMSE_Test_dB(rowIdx))
+            gain(rowIdx) = baselineNmse - sweepSummary.NMSE_Test_dB(rowIdx);
+        end
+    end
 end
 
-metadata = struct();
-if isfield(modelData, 'metadata')
-    metadata = modelData.metadata;
+sweepSummary.GainNMSE_Test_vs_Baseline_dB = gain;
 end
 
-pruningStats = struct();
-if isfield(modelData, 'pruningStats')
-    pruningStats = modelData.pruningStats;
-elseif isfield(metadata, 'pruning')
-    pruningStats = metadata.pruning;
-end
-
-pruningEnabledKnown = hasScalarField(metadata, 'pruning_enabled') || ...
-    hasScalarField(pruningStats, 'enabled');
-maskIntegrityKnown = hasScalarField(metadata, 'pruning_maskIntegrityOk') || ...
-    hasScalarField(pruningStats, 'maskIntegrityOk');
-
-row.Description = stringField(metadata, 'description', row.Description);
-row.Measurement = stringField(metadata, 'measfilename', row.Measurement);
-row.MappingMode = stringField(metadata, 'mappingMode', row.MappingMode);
-row.PruningEnabled = logicalField(metadata, 'pruning_enabled', ...
-    logicalField(pruningStats, 'enabled', row.PruningEnabled));
-row.PruningIncludeBias = logicalField(metadata, 'pruning_includeBias', ...
-    logicalField(pruningStats, 'includeBias', row.PruningIncludeBias));
-row.PruningFineTuneEpochs = numericField(metadata, 'pruning_fineTuneEpochs', ...
-    numericField(pruningStats, 'fineTuneEpochs', row.PruningFineTuneEpochs));
-row.PruningFineTuneBestEpoch = numericField(metadata, 'pruning_fineTuneBestEpoch', ...
-    numericField(pruningStats, 'fineTuneBestEpoch', row.PruningFineTuneBestEpoch));
-row.TotalPodableParams = numericField(metadata, 'pruning_totalPodableParams', ...
-    numericField(pruningStats, 'totalPodableParams', row.TotalPodableParams));
-row.PrunedParams = numericField(metadata, 'pruning_numPrunedParams', ...
-    numericField(pruningStats, 'numPrunedParams', row.PrunedParams));
-row.RemainingParams = numericField(metadata, 'pruning_numRemainingParams', ...
-    numericField(pruningStats, 'numRemainingParams', row.RemainingParams));
-row.MaskIntegrityOK = logicalField(metadata, 'pruning_maskIntegrityOk', ...
-    logicalField(pruningStats, 'maskIntegrityOk', row.MaskIntegrityOK));
-row.MaskIntegrityStatus = maskIntegrityStatus( ...
-    row.PruningEnabled, pruningEnabledKnown, row.MaskIntegrityOK, maskIntegrityKnown);
-row.MaskViolationCount = numericField(metadata, 'pruning_maskViolationCount', ...
-    numericField(pruningStats, 'maskViolationCount', row.MaskViolationCount));
-row.MaskViolationMaxAbs = numericField(metadata, 'pruning_maskViolationMaxAbs', ...
-    numericField(pruningStats, 'maskViolationMaxAbs', row.MaskViolationMaxAbs));
-row.SparsityTarget_pct = 100 * numericField(metadata, 'pruning_sparsityTarget', ...
-    numericField(pruningStats, 'sparsityTarget', NaN));
-row.SparsityActual_pct = 100 * numericField(metadata, 'pruning_sparsityActual', ...
-    numericField(pruningStats, 'sparsityActual', NaN));
-row.NMSE_TrainVal_dB = numericField(metadata, 'NMSE_trainVal', row.NMSE_TrainVal_dB);
-row.NMSE_Test_dB = numericField(metadata, 'NMSE_test', row.NMSE_Test_dB);
-row.PAPR_TrainVal_Pred_dB = numericField(metadata, ...
-    'PAPR_trainVal_NN', row.PAPR_TrainVal_Pred_dB);
-row.PAPR_TrainVal_Ref_dB = numericField(metadata, ...
-    'PAPR_trainVal_ref', row.PAPR_TrainVal_Ref_dB);
-row.PAPR_Test_Pred_dB = numericField(metadata, ...
-    'PAPR_test_NN', row.PAPR_Test_Pred_dB);
-row.PAPR_Test_Ref_dB = numericField(metadata, ...
-    'PAPR_test_ref', row.PAPR_Test_Ref_dB);
-end
-
-function row = emptySweepRow()
-row = struct();
-row.Description = "N/A";
-row.Measurement = "N/A";
-row.MappingMode = "N/A";
-row.SparsityTarget_pct = NaN;
-row.SparsityActual_pct = NaN;
-row.PruningEnabled = false;
-row.PruningIncludeBias = false;
-row.PruningFineTuneEpochs = NaN;
-row.PruningFineTuneBestEpoch = NaN;
-row.TotalPodableParams = NaN;
-row.PrunedParams = NaN;
-row.RemainingParams = NaN;
-row.MaskIntegrityOK = false;
-row.MaskIntegrityStatus = "UNKNOWN";
-row.MaskViolationCount = NaN;
-row.MaskViolationMaxAbs = NaN;
-row.NMSE_TrainVal_dB = NaN;
-row.NMSE_Test_dB = NaN;
-row.GainNMSE_Test_vs_Baseline_dB = NaN;
-row.PAPR_TrainVal_Pred_dB = NaN;
-row.PAPR_TrainVal_Ref_dB = NaN;
-row.PAPR_Test_Pred_dB = NaN;
-row.PAPR_Test_Ref_dB = NaN;
-row.ResultFolder = "N/A";
-row.ModelFile = "N/A";
-row.DeployFile = "N/A";
-end
-
-function exportSweepSummary(sweepSummary, sweepFolder)
+function exportSweepSummary(sweepSummary, performanceStack, sweepFolder, exportFigure)
+save(fullfile(sweepFolder, 'performance_stack.mat'), 'performanceStack');
 save(fullfile(sweepFolder, 'sweep_summary.mat'), 'sweepSummary');
 writetable(sweepSummary, fullfile(sweepFolder, 'sweep_summary.csv'));
 
@@ -248,7 +177,9 @@ catch ME
         'Could not write sweep_summary.xlsx: %s', ME.message);
 end
 
-exportSweepSummaryTableFigure(sweepSummary, sweepFolder);
+if nargin >= 4 && exportFigure
+    pnnnPerformanceFigure(sweepSummary, sweepFolder, 'sweep_summary_table');
+end
 end
 
 function compactTable = buildSweepSummaryCompact(sweepSummary)
@@ -275,71 +206,6 @@ compactTable.FineTuneBestEpoch = tableColumnOrDefault(sweepSummary, ...
     'PruningFineTuneBestEpoch', NaN(height(sweepSummary), 1));
 end
 
-function value = stringField(data, fieldName, defaultValue)
-value = defaultValue;
-if ~isstruct(data) || ~isfield(data, fieldName)
-    return;
-end
-
-rawValue = data.(fieldName);
-if isstring(rawValue) || ischar(rawValue)
-    value = string(rawValue);
-elseif isnumeric(rawValue) || islogical(rawValue)
-    value = string(rawValue);
-end
-end
-
-function value = numericField(data, fieldName, defaultValue)
-value = defaultValue;
-if ~isstruct(data) || ~isfield(data, fieldName)
-    return;
-end
-
-rawValue = data.(fieldName);
-if (isnumeric(rawValue) || islogical(rawValue)) && isscalar(rawValue)
-    value = double(rawValue);
-end
-end
-
-function value = logicalField(data, fieldName, defaultValue)
-value = defaultValue;
-if ~isstruct(data) || ~isfield(data, fieldName)
-    return;
-end
-
-rawValue = data.(fieldName);
-if islogical(rawValue) && isscalar(rawValue)
-    value = rawValue;
-elseif isnumeric(rawValue) && isscalar(rawValue)
-    value = logical(rawValue);
-end
-end
-
-function known = hasScalarField(data, fieldName)
-known = false;
-if ~isstruct(data) || ~isfield(data, fieldName)
-    return;
-end
-
-rawValue = data.(fieldName);
-known = isscalar(rawValue) && (islogical(rawValue) || isnumeric(rawValue));
-end
-
-function status = maskIntegrityStatus(pruningEnabled, pruningEnabledKnown, ...
-    maskIntegrityOk, maskIntegrityKnown)
-if ~pruningEnabledKnown
-    status = "UNKNOWN";
-elseif ~pruningEnabled
-    status = "N/A";
-elseif ~maskIntegrityKnown
-    status = "UNKNOWN";
-elseif maskIntegrityOk
-    status = "OK";
-else
-    status = "FAIL";
-end
-end
-
 function values = tableColumnOrDefault(summaryTable, columnName, defaultValues)
 if any(strcmp(summaryTable.Properties.VariableNames, columnName))
     values = summaryTable.(columnName);
@@ -364,6 +230,8 @@ fprintf(fid, 'fineTuneEpochs: %d\n', sweepConfig.fineTuneEpochs);
 fprintf(fid, 'includeBias: %d\n', sweepConfig.includeBias);
 fprintf(fid, 'freezePruned: %d\n', sweepConfig.freezePruned);
 fprintf(fid, 'pruningScope: %s\n', char(string(sweepConfig.pruningScope)));
+fprintf(fid, 'gmpBaselineDir: %s\n', sweepConfig.gmpBaselineDir);
+fprintf(fid, 'exportFigure: %d\n', sweepConfig.exportFigure);
 fprintf(fid, 'sweepFolder: %s\n', sweepConfig.sweepFolder);
 
 clear cleanupObj;

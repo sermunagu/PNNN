@@ -814,6 +814,90 @@ Pendiente:
 
 ---
 
+### 2026-05-01 — Performance summary por experimento y sweep
+
+Objetivo:
+- Añadir un resumen limpio y ligero de rendimiento por experimento y usarlo como fuente del reporting de pruning sweeps.
+
+Archivos nuevos:
+- `toolbox/reporting/buildPNNNPerformanceSummary.m`
+- `toolbox/reporting/savePNNNPerformanceSummary.m`
+- `toolbox/reporting/pnnnPerformanceToTable.m`
+- `toolbox/reporting/pnnnPerformanceFigure.m`
+
+Archivos modificados:
+- `config/getPNNNConfig.m`
+- `train_PNNN_offline.m`
+- `experiments/run_PNNN_pruning_sweep.m`
+- `toolbox/reporting/exportSweepSummaryTableFigure.m`
+- `toolbox/reporting/printFinalPNNNSummary.m`
+- `README.md`
+- `docs/PROJECT_LOG.md`
+
+Cambios realizados:
+- Cada entrenamiento offline guarda `performance_summary.mat`, `performance_summary.csv` y `performance_summary.txt` dentro de la carpeta del experimento.
+- El struct `performance` incluye configuración relevante, métricas NMSE/PAPR, pruning, GMP, gains frente a GMP justo y rutas de artefactos, sin guardar señales pesadas.
+- El sweep apila los `performance_summary.mat` individuales en `performance_stack.mat` y genera `sweep_summary.mat`, `sweep_summary.csv` y `sweep_summary.xlsx` desde esos summaries.
+- Los baselines GMP del sweep se guardan una sola vez en `results/pruning_sweeps/<timestamp>/GMP_baselines/` y se reutilizan por cada sparsity.
+- La exportación visual queda opcional con `cfg.sweep.exportFigure` y usa fallback silencioso para no emitir warnings de UI/export en batch.
+- Retoque posterior: `pnnnPerformanceToTable.m` exporta más columnas de pruning/fine-tuning y `savePNNNPerformanceSummary.m` respeta las rutas `performance*File` cuando ya existen en el struct.
+- No se cambiaron arquitectura, features, normalización, split, `mappingMode`, semántica X/Y ni cálculo de métricas.
+
+Comandos ejecutados por Codex:
+- `git status -sb`
+- `git status --short`
+- búsquedas ligeras con `git grep`
+- `git diff --check`
+- pruebas MATLAB ligeras de resolución/smoke test de helpers, sin ejecutar entrenamiento, inferencia ni sweep.
+
+Resultados:
+- No se ejecutaron entrenamientos.
+- No se ejecutaron inferencias.
+- No se ejecutó pruning sweep.
+- No se tocaron `measurements/`, `results/`, `generated_outputs/`, `.mat`, `.fig`, `deploy_package.mat` ni outputs experimentales.
+
+Pendiente:
+- Ejecutar manualmente un entrenamiento o sweep cuando Sergi decida para generar summaries reales y validar los artefactos en `results/`.
+
+---
+
+### 2026-05-01 — Retoques ligeros de tablas performance
+
+Objetivo:
+- Completar columnas de tabla de `performance_summary` y añadir un cargador ligero de summaries.
+
+Archivos nuevos:
+- `toolbox/reporting/loadPNNNPerformanceSummaries.m`
+
+Archivos modificados:
+- `toolbox/reporting/pnnnPerformanceToTable.m`
+- `README.md`
+- `docs/PROJECT_LOG.md`
+
+Cambios realizados:
+- `pnnnPerformanceToTable.m` añade `PerformanceCsvFile` y `PerformanceTxtFile`.
+- La tabla evita representar falsamente `RemainingParams=0` en baseline sin pruning: si `pruningEnabled=false` y existe `totalPodableParams`, usa `PrunedParams=0` y `RemainingParams=totalPodableParams`; si no hay total, deja `NaN`.
+- Se añadió `loadPNNNPerformanceSummaries.m` para cargar summaries desde carpeta, patrón o lista de ficheros y devolver `[performanceStack, performanceTable]`.
+- Se añadió `alignStructFields.m` para apilar `performance` con campos no idénticos en el loader y en el sweep.
+- Retoque posterior: `pnnnPerformanceFigure.m` evita fallos por padding cero y `pnnnPerformanceToTable.m` no muestra fine-tuning ejecutado cuando `PruningEnabled=false`.
+- `README.md` documenta cómo cargar tablas MATLAB nativas desde `performance_summary.mat` y `performance_stack.mat`.
+- No se cambiaron arquitectura, features, normalización, split, `mappingMode`, semántica X/Y ni métricas.
+
+Comandos ejecutados por Codex:
+- Checks Git ligeros.
+- Smoke tests MATLAB con structs sintéticos, sin ejecutar entrenamiento, inferencia ni sweep.
+
+Resultados:
+- No se ejecutaron entrenamientos.
+- No se ejecutaron inferencias.
+- No se ejecutó pruning sweep.
+- No se tocaron `measurements/`, `results/`, `generated_outputs/`, `.mat`, `.fig`, `deploy_package.mat` ni outputs experimentales.
+
+Pendiente:
+- Validar `loadPNNNPerformanceSummaries.m` con summaries reales cuando existan nuevos resultados generados por Sergi.
+
+---
+
 ## Plantilla para futuras entradas
 
 Copiar y rellenar esta plantilla después de cada intervención relevante:

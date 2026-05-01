@@ -38,6 +38,15 @@ fprintf('%-33s: %s\n', 'model.mat', textValue(summary.modelFile));
 fprintf('%-33s: %s\n', 'deploy_package.mat', textValue(summary.deployFile));
 fprintf('%-33s: %s\n', 'predictions.mat', textValue(summary.predFile));
 fprintf('%-33s: %s\n', 'metadata.txt', textValue(summary.txtFile));
+if isfield(summary, 'performanceMatFile')
+    fprintf('%-33s: %s\n', 'performance_summary.mat', textValue(summary.performanceMatFile));
+end
+if isfield(summary, 'performanceCsvFile')
+    fprintf('%-33s: %s\n', 'performance_summary.csv', textValue(summary.performanceCsvFile));
+end
+if isfield(summary, 'performanceTxtFile')
+    fprintf('%-33s: %s\n', 'performance_summary.txt', textValue(summary.performanceTxtFile));
+end
 
 fprintf('============================================================\n');
 end

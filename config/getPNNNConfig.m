@@ -71,7 +71,7 @@ cfg.pruning.sparsity = 0.3;
 cfg.pruning.scope = "global";
 cfg.pruning.includeBias = false;
 cfg.pruning.fineTuneEnabled = true;
-cfg.pruning.fineTuneEpochs = 10;
+cfg.pruning.fineTuneEpochs = 20;
 cfg.pruning.fineTuneInitialLearnRate = cfg.training.initialLearnRate;
 cfg.pruning.freezePruned = true;
 
@@ -79,6 +79,7 @@ cfg.gmp = struct();
 cfg.gmp.runBaseline = true;
 cfg.gmp.runJusto = true;
 cfg.gmp.baselineFolderName = "GMP_baselines";
+cfg.gmp.baselineDir = "";
 cfg.gmp.modelConfigFunction = 'modelconfigGMP';
 cfg.gmp.conjugateModelConfigFunction = 'modelconfigGMPconj';
 cfg.gmp.justo = struct();
@@ -101,6 +102,9 @@ cfg.output.modelFileName = "model.mat";
 cfg.output.predictionsFileName = "predictions.mat";
 cfg.output.metadataFileName = "metadata.txt";
 cfg.output.deployFileName = "deploy_package.mat";
+cfg.output.performanceSummaryMatFileName = "performance_summary.mat";
+cfg.output.performanceSummaryCsvFileName = "performance_summary.csv";
+cfg.output.performanceSummaryTxtFileName = "performance_summary.txt";
 cfg.output.deployPackage = "";
 cfg.output.onlineOutputFileSuffix = '_pnnn_output.mat';
 cfg.output.saveMetadata = true;
@@ -115,6 +119,7 @@ cfg.sweep.includeBias = cfg.pruning.includeBias;
 cfg.sweep.freezePruned = cfg.pruning.freezePruned;
 cfg.sweep.pruningScope = cfg.pruning.scope;
 cfg.sweep.outputRoot = fullfile(cfg.paths.resultsDir, 'pruning_sweeps');
+cfg.sweep.exportFigure = false;
 end
 
 function fields = pnnnInputFieldCandidates(mappingMode)

@@ -49,6 +49,9 @@ modelFile  = fullfile(expFolder, cfg.output.modelFileName);
 predFile   = fullfile(expFolder, cfg.output.predictionsFileName);
 txtFile    = fullfile(expFolder, cfg.output.metadataFileName);
 deployFile = fullfile(expFolder, cfg.output.deployFileName);
+performanceMatFile = fullfile(expFolder, cfg.output.performanceSummaryMatFileName);
+performanceCsvFile = fullfile(expFolder, cfg.output.performanceSummaryCsvFileName);
+performanceTxtFile = fullfile(expFolder, cfg.output.performanceSummaryTxtFileName);
 
 if cfg.output.skipIfExists && exist(modelFile, "file")
     fprintf("[SKIP] El experimento ya existe: %s\n", modelFile);
@@ -128,7 +131,11 @@ NMSE_val_ridge_1e4 = NaN;
 resGMP = struct();
 
 if cfg.gmp.runBaseline || cfg.gmp.runJusto
-    gmpBaseFolder = fullfile(cfg.paths.resultsDir, cfg.gmp.baselineFolderName);
+    gmpBaseFolder = string(cfg.gmp.baselineDir);
+    if strlength(gmpBaseFolder) == 0
+        gmpBaseFolder = string(fullfile(cfg.paths.resultsDir, cfg.gmp.baselineFolderName));
+    end
+    gmpBaseFolder = char(gmpBaseFolder);
     if ~exist(gmpBaseFolder, "dir")
         mkdir(gmpBaseFolder);
     end
@@ -388,6 +395,19 @@ save(deployFile, "deploy", "metadata", "-v7.3");
 
 exportMetadataTxt(txtFile, metadata);
 
+performanceFiles = struct();
+performanceFiles.experimentFolder = expFolder;
+performanceFiles.modelFile = modelFile;
+performanceFiles.deployFile = deployFile;
+performanceFiles.predictionsFile = predFile;
+performanceFiles.metadataFile = txtFile;
+performanceFiles.performanceMatFile = performanceMatFile;
+performanceFiles.performanceCsvFile = performanceCsvFile;
+performanceFiles.performanceTxtFile = performanceTxtFile;
+
+performance = buildPNNNPerformanceSummary(metadata, performanceFiles);
+savePNNNPerformanceSummary(expFolder, performance);
+
 finalSummary = struct();
 finalSummary.cfg = cfg;
 finalSummary.NMSE_trainVal = NMSE_trainVal;
@@ -406,6 +426,10 @@ finalSummary.modelFile = modelFile;
 finalSummary.deployFile = deployFile;
 finalSummary.predFile = predFile;
 finalSummary.txtFile = txtFile;
+finalSummary.performance = performance;
+finalSummary.performanceMatFile = performanceMatFile;
+finalSummary.performanceCsvFile = performanceCsvFile;
+finalSummary.performanceTxtFile = performanceTxtFile;
 
 printFinalPNNNSummary(finalSummary);
 
