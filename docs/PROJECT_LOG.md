@@ -1065,6 +1065,26 @@ Cambios realizados:
 
 ---
 
+### 2026-05-01 — Cierre validado de Fase B
+
+Objetivo:
+- Registrar el cierre de la Fase B de configuración centralizada tras validación manual.
+
+Cambios registrados:
+- La Fase B queda cerrada con el commit `579cee5 refactor: centralize online reporting and GMP config`.
+- Se centralizó `cfg.online`, los nombres de reporting/output y parte de la configuración GMP.
+- Se validó la inferencia online después del refactor.
+- El flujo por defecto carga el último deploy disponible cuando no se fija uno explícitamente en `cfg.online.deployPackage` o `cfg.output.deployPackage`.
+- La salida online `yhat` fue validada como existente, no vacía y finita.
+- El repositorio quedó limpio y sincronizado con `origin/main` tras el commit `579cee5`.
+
+Comandos ejecutados por Sergi:
+- `matlab -batch "addpath(genpath(pwd)); cfg=getPNNNConfig(); disp(cfg.online); disp(cfg.output);"`
+- `matlab -batch "addpath(genpath(pwd)); run_PNNN_online_from_xy"`
+- `matlab -batch "S=load(fullfile(pwd,'generated_outputs','experiment20260429T134032_xy_pnnn_output.mat')); assert(isfield(S,'yhat')); assert(numel(S.yhat)>0); assert(all(isfinite(S.yhat(:)))); fprintf('Online output OK: yhat finite, numel=%d\n',numel(S.yhat));"`
+
+---
+
 ## Plantilla para futuras entradas
 
 Copiar y rellenar esta plantilla después de cada intervención relevante:
