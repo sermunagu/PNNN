@@ -114,6 +114,7 @@ cfg.output.outputSemanticsPrefix = 'Phase-normalized NN output';
 cfg.output.skipIfExists = false;
 
 cfg.sweep = struct();
+cfg.sweep.sparsityList = [0 0.3];
 cfg.sweep.fineTuneEpochs = cfg.pruning.fineTuneEpochs;
 cfg.sweep.includeBias = cfg.pruning.includeBias;
 cfg.sweep.freezePruned = cfg.pruning.freezePruned;

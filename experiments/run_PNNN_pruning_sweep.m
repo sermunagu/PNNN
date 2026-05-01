@@ -13,8 +13,13 @@ addpath(genpath(repoRoot));
 baseCfg = getPNNNConfig(repoRoot);
 
 %% ======================= SWEEP CONFIG =======================
-% Edit this list to choose the pruning sparsities evaluated by the sweep.
-sparsityList = [0 0.3];
+% Configure pruning sparsities in config/getPNNNConfig.m (cfg.sweep.sparsityList).
+if isfield(baseCfg, 'sweep') && isfield(baseCfg.sweep, 'sparsityList') && ...
+        ~isempty(baseCfg.sweep.sparsityList)
+    sparsityList = double(baseCfg.sweep.sparsityList(:)).';
+else
+    sparsityList = [0 0.3];
+end
 fineTuneEpochs = baseCfg.sweep.fineTuneEpochs;
 
 includeBias = baseCfg.sweep.includeBias;

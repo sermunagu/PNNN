@@ -20,6 +20,7 @@ El proyecto se llamaba antes `NN_DPD`. Ese nombre puede aparecer en rutas o resu
 - `train_PNNN_offline.m`: flujo offline recomendado. Carga `config/getPNNNConfig.m`, entrena la NN phase-normalized desde una medida `x/y` y guarda `model.mat`, `predictions.mat`, `metadata.txt`, `deploy_package.mat` y `performance_summary.*`.
   Nota actual: este script tiene pruning activado por defecto con `cfg.pruning.enabled = true` y `cfg.pruning.sparsity = 0.3`. Para obtener un baseline sin pruning, hay que desactivarlo explícitamente o usar overrides/configuración adecuada antes de ejecutar.
 - `run_PNNN_online_from_xy.m`: flujo online recomendado. Carga `deploy_package.mat`, lee un nuevo fichero `x/y`, aplica la red y guarda la señal estimada.
+  Si `cfg.output.deployPackage` está vacío, usa el último fichero con nombre `cfg.output.deployFileName` encontrado bajo `results/`.
 - `legacy/main.m`: flujo histórico monolítico de un experimento.
 - `legacy/main_bucle.m`: flujo histórico de barrido de activaciones y arquitecturas.
 - `toolbox/phase_norm/buildPhaseNormDataset.m`: constructor compartido de features.
@@ -104,7 +105,7 @@ sweepTable = pnnnPerformanceToTable(S.performanceStack);
 
 ## Pruning Sweeps
 
-El script `experiments/run_PNNN_pruning_sweep.m` permite lanzar varios entrenamientos secuenciales con distintos valores de sparsity sin editar manualmente `train_PNNN_offline.m`. Para cambiar las sparsities del sweep, edita la lista `sparsityList` en la sección `SWEEP CONFIG` de ese script.
+El script `experiments/run_PNNN_pruning_sweep.m` permite lanzar varios entrenamientos secuenciales con distintos valores de sparsity sin editar manualmente `train_PNNN_offline.m`. Para cambiar las sparsities del sweep, edita `cfg.sweep.sparsityList` en `config/getPNNNConfig.m`.
 
 Desde la raíz del repo:
 

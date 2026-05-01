@@ -989,6 +989,32 @@ Comandos ejecutados por Codex:
 
 ---
 
+### 2026-05-01 — Fase A mínima de configuración centralizada
+
+Objetivo:
+- Centralizar los últimos hardcodes seguros de sweep y deploy sin cambiar comportamiento operativo.
+
+Archivos modificados:
+- `config/getPNNNConfig.m`
+- `experiments/run_PNNN_pruning_sweep.m`
+- `run_PNNN_online_from_xy.m`
+- `README.md`
+- `docs/PROJECT_LOG.md`
+
+Cambios realizados:
+- `cfg.sweep.sparsityList = [0 0.3]` queda como lista oficial del sweep rápido actual.
+- El sweep lee `cfg.sweep.sparsityList` y mantiene fallback local `[0 0.3]` si el campo no existe o está vacío.
+- `run_PNNN_online_from_xy.m` usa `cfg.output.deployFileName` para buscar el último deploy cuando `cfg.output.deployPackage` está vacío.
+- No se cambiaron arquitectura, métricas, mapping, split, pruning, features, normalización ni semántica X/Y.
+
+Resultados:
+- No se ejecutaron entrenamientos.
+- No se ejecutaron inferencias.
+- No se ejecutó pruning sweep.
+- No se tocaron `measurements/`, `results/`, `generated_outputs/`, `.mat`, `.fig`, `deploy_package.mat` ni outputs experimentales.
+
+---
+
 ## Plantilla para futuras entradas
 
 Copiar y rellenar esta plantilla después de cada intervención relevante:

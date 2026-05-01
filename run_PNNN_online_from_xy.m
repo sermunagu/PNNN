@@ -15,7 +15,9 @@ addpath(genpath(scriptDir));
 
 baseCfg = getPNNNConfig(scriptDir);
 cfg = struct();
-cfg.deployPackage = baseCfg.output.deployPackage; % Si está vacío, usa el deploy_package.mat más reciente en results/
+cfg.deployPackage = baseCfg.output.deployPackage; % Si está vacío, usa el último deploy configurado en results/
+cfg.deployFileName = getOutputField(baseCfg.output, ...
+    'deployFileName', 'deploy_package.mat');
 cfg.inputXyFile = baseCfg.data.measurementFile;
 cfg.outputFolder = baseCfg.paths.generatedOutputsDir;
 cfg.outputFileSuffix = baseCfg.output.onlineOutputFileSuffix;
@@ -25,7 +27,8 @@ cfg.defaultAliasOutputFields = baseCfg.output.aliasOutputFields;
 cfg.outputSemanticsPrefix = baseCfg.output.outputSemanticsPrefix;
 
 if strlength(string(cfg.deployPackage)) == 0
-    cfg.deployPackage = findLatestDeployPackage(baseCfg.paths.resultsDir);
+    cfg.deployPackage = findLatestDeployPackage( ...
+        baseCfg.paths.resultsDir, cfg.deployFileName);
 end
 
 if ~exist(cfg.outputFolder, 'dir')
@@ -34,7 +37,7 @@ end
 
 %% ======================= CARGA DEPLOY =======================
 Sdep = load(cfg.deployPackage);
-assert(isfield(Sdep,'deploy'), 'El deploy_package.mat no contiene la variable deploy.');
+assert(isfield(Sdep,'deploy'), 'El deploy package no contiene la variable deploy.');
 
 deploy = Sdep.deploy;
 if isfield(deploy, 'netDPD')
@@ -187,10 +190,15 @@ save(outFile, '-struct', 'outputStruct', '-v7.3');
 fprintf('Salida guardada en: %s\n', outFile);
 
 %% ======================= FUNCIONES LOCALES =======================
-function deployPackage = findLatestDeployPackage(resultsRoot)
-files = dir(fullfile(resultsRoot, '**', 'deploy_package.mat'));
+function deployPackage = findLatestDeployPackage(resultsRoot, deployFileName)
+if nargin < 2 || strlength(string(deployFileName)) == 0
+    deployFileName = 'deploy_package.mat';
+end
+
+files = dir(fullfile(resultsRoot, '**', char(string(deployFileName))));
 if isempty(files)
-    error('No se encontró ningún deploy_package.mat en %s. Ejecuta primero train_PNNN_offline.m o ajusta cfg.deployPackage.', resultsRoot);
+    error('No se encontró ningún %s en %s. Ejecuta primero train_PNNN_offline.m o ajusta cfg.deployPackage.', ...
+        char(string(deployFileName)), resultsRoot);
 end
 [~, idx] = max([files.datenum]);
 deployPackage = fullfile(files(idx).folder, files(idx).name);
@@ -214,6 +222,15 @@ end
 function value = getCfgField(cfg, fieldName, defaultValue)
 if isfield(cfg, fieldName)
     value = cfg.(fieldName);
+else
+    value = defaultValue;
+end
+end
+
+function value = getOutputField(outputCfg, fieldName, defaultValue)
+if isstruct(outputCfg) && isfield(outputCfg, fieldName) && ...
+        strlength(string(outputCfg.(fieldName))) > 0
+    value = outputCfg.(fieldName);
 else
     value = defaultValue;
 end
