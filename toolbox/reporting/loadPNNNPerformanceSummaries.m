@@ -48,6 +48,7 @@ end
 
 function files = resolveSummaryFiles(source)
 files = {};
+summaryFileName = defaultSummaryFileName();
 
 if isstring(source) || ischar(source)
     sourceValues = cellstr(string(source));
@@ -65,7 +66,7 @@ for k = 1:numel(sourceValues)
     end
 
     if isfolder(item)
-        listing = dir(fullfile(item, '**', 'performance_summary.mat'));
+        listing = dir(fullfile(item, '**', char(summaryFileName)));
         files = [files; fullfile({listing.folder}.', {listing.name}.')]; %#ok<AGROW>
     elseif contains(item, '*') || contains(item, '?')
         listing = dir(item);
@@ -82,6 +83,23 @@ if isempty(files)
 end
 end
 
+function fileName = defaultSummaryFileName()
+fileName = "performance_summary.mat";
+if exist('getPNNNConfig', 'file') ~= 2
+    return;
+end
+
+try
+    cfg = getPNNNConfig();
+    if isfield(cfg, 'output') && ...
+            isfield(cfg.output, 'performanceSummaryMatFileName') && ...
+            strlength(string(cfg.output.performanceSummaryMatFileName)) > 0
+        fileName = string(cfg.output.performanceSummaryMatFileName);
+    end
+catch
+end
+end
+
 function performanceStack = appendPerformance(performanceStack, performance)
 performance = performance(:).';
 if isempty(performanceStack)
@@ -89,6 +107,6 @@ if isempty(performanceStack)
 else
     [performanceStack, performance] = alignStructFields( ...
         performanceStack, performance);
-    performanceStack = [performanceStack performance]; %#ok<AGROW>
+    performanceStack = [performanceStack performance];
 end
 end

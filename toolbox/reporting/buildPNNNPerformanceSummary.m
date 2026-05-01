@@ -83,6 +83,10 @@ performance.metadataFile = stringField(outputFiles, 'metadataFile', "");
 performance.performanceMatFile = stringField(outputFiles, 'performanceMatFile', "");
 performance.performanceCsvFile = stringField(outputFiles, 'performanceCsvFile', "");
 performance.performanceTxtFile = stringField(outputFiles, 'performanceTxtFile', "");
+performance.performanceCompactCsvFile = stringField(outputFiles, ...
+    'performanceCompactCsvFile', "");
+performance.performanceCompactDisplayCsvFile = stringField(outputFiles, ...
+    'performanceCompactDisplayCsvFile', "");
 end
 
 function value = stringField(s, fieldName, defaultValue)

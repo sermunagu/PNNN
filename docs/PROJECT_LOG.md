@@ -1035,6 +1035,36 @@ Cambios realizados:
 
 ---
 
+### 2026-05-01 — Fase B de configuración centralizada
+
+Objetivo:
+- Completar una centralización mínima y segura de configuración online, reporting/export y GMP clásico.
+
+Archivos modificados:
+- `config/getPNNNConfig.m`
+- `run_PNNN_online_from_xy.m`
+- `train_PNNN_offline.m`
+- `experiments/run_PNNN_pruning_sweep.m`
+- `GVG/GMP_ridge_GVG.m`
+- `toolbox/reporting/buildPNNNPerformanceSummary.m`
+- `toolbox/reporting/savePNNNPerformanceSummary.m`
+- `toolbox/reporting/loadPNNNPerformanceSummaries.m`
+- `toolbox/reporting/exportSweepSummaryTableFigure.m`
+- `README.md`
+- `docs/CODEX_WORKFLOW.md`
+- `docs/PROJECT_LOG.md`
+
+Cambios realizados:
+- Se añadió `cfg.online` para seleccionar deploy, input y salida online sin cambiar el comportamiento por defecto.
+- Se centralizaron nombres de `performance_summary.*`, tablas compactas y `sweep_summary.*` en `cfg.output`.
+- `run_PNNN_online_from_xy.m` mantiene `yhat` como salida principal y sigue usando el último deploy si no se configura uno concreto.
+- `train_PNNN_offline.m` pasa `cfg.gmp.classic` al baseline GMP clásico; `GMP_ridge_GVG.m` conserva defaults internos para compatibilidad.
+- `cfg.data.inputFieldCandidates` usa el helper compartido `inputFieldCandidatesFromMapping`.
+- No se ejecutaron entrenamientos, inferencias ni sweeps.
+- No se tocaron `measurements/`, `results/`, `generated_outputs/`, `.mat`, `.fig`, `deploy_package.mat` ni outputs experimentales.
+
+---
+
 ## Plantilla para futuras entradas
 
 Copiar y rellenar esta plantilla después de cada intervención relevante:

@@ -27,7 +27,7 @@ cfg.data.measurementFile = fullfile(cfg.paths.measurementsDir, ...
 cfg.data.blockName = 'ILC_DPD';
 cfg.data.modelado = 'DPD';
 cfg.data.mappingMode = 'xy_forward';
-cfg.data.inputFieldCandidates = pnnnInputFieldCandidates(cfg.data.mappingMode);
+cfg.data.inputFieldCandidates = inputFieldCandidatesFromMapping(cfg.data.mappingMode);
 
 cfg.split = struct();
 cfg.split.method = 'stratified_by_amplitude';
@@ -82,6 +82,17 @@ cfg.gmp.baselineFolderName = "GMP_baselines";
 cfg.gmp.baselineDir = "";
 cfg.gmp.modelConfigFunction = 'modelconfigGMP';
 cfg.gmp.conjugateModelConfigFunction = 'modelconfigGMPconj';
+cfg.gmp.classic = struct();
+cfg.gmp.classic.identificationFraction = 0.04;
+cfg.gmp.classic.seed = 1004;
+cfg.gmp.classic.Qpmax = 50;
+cfg.gmp.classic.Qnmax = 50;
+cfg.gmp.classic.Pmax = 13;
+cfg.gmp.classic.maxPopulation = 100;
+cfg.gmp.classic.selectionMode = 'omp';
+cfg.gmp.classic.blockSize = 8192;
+cfg.gmp.classic.lambda1 = 1e-3;
+cfg.gmp.classic.lambda2 = 1e-4;
 cfg.gmp.justo = struct();
 cfg.gmp.justo.Qpmax = 50;
 cfg.gmp.justo.Qnmax = 50;
@@ -105,6 +116,17 @@ cfg.output.deployFileName = "deploy_package.mat";
 cfg.output.performanceSummaryMatFileName = "performance_summary.mat";
 cfg.output.performanceSummaryCsvFileName = "performance_summary.csv";
 cfg.output.performanceSummaryTxtFileName = "performance_summary.txt";
+cfg.output.performanceSummaryCompactCsvFileName = "performance_summary_compact.csv";
+cfg.output.performanceSummaryCompactDisplayCsvFileName = "performance_summary_compact_display.csv";
+cfg.output.performanceStackFileName = "performance_stack.mat";
+cfg.output.sweepSummaryMatFileName = "sweep_summary.mat";
+cfg.output.sweepSummaryCsvFileName = "sweep_summary.csv";
+cfg.output.sweepSummaryXlsxFileName = "sweep_summary.xlsx";
+cfg.output.sweepSummaryCompactMatFileName = "sweep_summary_compact.mat";
+cfg.output.sweepSummaryCompactCsvFileName = "sweep_summary_compact.csv";
+cfg.output.sweepSummaryCompactDisplayCsvFileName = "sweep_summary_compact_display.csv";
+cfg.output.sweepSummaryCompactXlsxFileName = "sweep_summary_compact.xlsx";
+cfg.output.sweepSummaryTableBaseName = "sweep_summary_table";
 cfg.output.deployPackage = ""; % Coge el último temporalmente
 % Para coger uno en concreto
 %cfg.output.deployPackage = "C:\Sergi\Investigacion\Códigos\NN\PNNN\results\...\deploy_package.mat";
@@ -115,6 +137,14 @@ cfg.output.aliasOutputFields = {'y_model','y_nn'};
 cfg.output.outputSemanticsPrefix = 'Phase-normalized NN output';
 cfg.output.skipIfExists = false;
 
+cfg.online = struct();
+cfg.online.useLatestDeploy = true;
+cfg.online.deployPackage = "";
+cfg.online.inputFile = "";
+cfg.online.outputDir = cfg.paths.generatedOutputsDir;
+cfg.online.outputSuffix = "_pnnn_output";
+cfg.online.primaryOutputField = "yhat";
+
 cfg.sweep = struct();
 cfg.sweep.sparsityList = [0 0.3];
 cfg.sweep.fineTuneEpochs = cfg.pruning.fineTuneEpochs;
@@ -123,15 +153,4 @@ cfg.sweep.freezePruned = cfg.pruning.freezePruned;
 cfg.sweep.pruningScope = cfg.pruning.scope;
 cfg.sweep.outputRoot = fullfile(cfg.paths.resultsDir, 'pruning_sweeps');
 cfg.sweep.exportFigure = false;
-end
-
-function fields = pnnnInputFieldCandidates(mappingMode)
-switch string(mappingMode)
-    case "xy_forward"
-        fields = {'x','xi','x_in','input'};
-    case "yx_inverse"
-        fields = {'y','y_in','output','target'};
-    otherwise
-        error("mappingMode must be 'xy_forward' or 'yx_inverse'.");
-end
 end

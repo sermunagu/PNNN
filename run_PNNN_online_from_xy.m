@@ -14,22 +14,20 @@ if isempty(scriptDir), scriptDir = pwd; end
 addpath(genpath(scriptDir));
 
 baseCfg = getPNNNConfig(scriptDir);
+onlineCfg = getCfgStruct(baseCfg, 'online', struct());
 cfg = struct();
-cfg.deployPackage = baseCfg.output.deployPackage; % Si está vacío, usa el último deploy configurado en results/
 cfg.deployFileName = getOutputField(baseCfg.output, ...
     'deployFileName', 'deploy_package.mat');
-cfg.inputXyFile = baseCfg.data.measurementFile;
-cfg.outputFolder = baseCfg.paths.generatedOutputsDir;
-cfg.outputFileSuffix = baseCfg.output.onlineOutputFileSuffix;
+cfg.deployPackage = resolveDeployPackage(baseCfg, onlineCfg, cfg.deployFileName);
+cfg.inputXyFile = getCfgString(onlineCfg, 'inputFile', baseCfg.data.measurementFile);
+cfg.outputFolder = getCfgString(onlineCfg, 'outputDir', baseCfg.paths.generatedOutputsDir);
+cfg.outputFileSuffix = getCfgString(onlineCfg, 'outputSuffix', ...
+    getOutputField(baseCfg.output, 'onlineOutputFileSuffix', '_pnnn_output.mat'));
 cfg.saveMetadata = baseCfg.output.saveMetadata;
-cfg.defaultPrimaryOutputField = baseCfg.output.primaryOutputField;
+cfg.defaultPrimaryOutputField = getCfgString(onlineCfg, ...
+    'primaryOutputField', baseCfg.output.primaryOutputField);
 cfg.defaultAliasOutputFields = baseCfg.output.aliasOutputFields;
 cfg.outputSemanticsPrefix = baseCfg.output.outputSemanticsPrefix;
-
-if strlength(string(cfg.deployPackage)) == 0
-    cfg.deployPackage = findLatestDeployPackage( ...
-        baseCfg.paths.resultsDir, cfg.deployFileName);
-end
 
 if ~exist(cfg.outputFolder, 'dir')
     mkdir(cfg.outputFolder);
@@ -118,7 +116,8 @@ fprintf('Tiempo de inferencia: %.6f s\n', inferenceTimeSeconds);
 
 %% ======================= GUARDADO =======================
 [~, inName, ~] = fileparts(cfg.inputXyFile);
-outFile = fullfile(cfg.outputFolder, [inName cfg.outputFileSuffix]);
+outFile = fullfile(cfg.outputFolder, outputFileNameFromSuffix( ...
+    inName, cfg.outputFileSuffix));
 
 primaryOutputField = getCfgString(cfgD, 'primaryOutputField', ...
     getCfgString(cfgD, 'outputFieldName', cfg.defaultPrimaryOutputField));
@@ -190,6 +189,36 @@ save(outFile, '-struct', 'outputStruct', '-v7.3');
 fprintf('Salida guardada en: %s\n', outFile);
 
 %% ======================= FUNCIONES LOCALES =======================
+function deployPackage = resolveDeployPackage(baseCfg, onlineCfg, deployFileName)
+if isfield(baseCfg, 'output') && isfield(baseCfg.output, 'deployPackage') && ...
+        strlength(string(baseCfg.output.deployPackage)) > 0
+    deployPackage = baseCfg.output.deployPackage;
+elseif isfield(onlineCfg, 'deployPackage') && ...
+        strlength(string(onlineCfg.deployPackage)) > 0
+    deployPackage = onlineCfg.deployPackage;
+else
+    useLatestDeploy = getCfgLogical(onlineCfg, 'useLatestDeploy', true);
+    if ~useLatestDeploy
+        error(['No deploy package configured. Set cfg.online.deployPackage, ' ...
+            'cfg.output.deployPackage, or cfg.online.useLatestDeploy=true.']);
+    end
+    deployPackage = findLatestDeployPackage( ...
+        baseCfg.paths.resultsDir, deployFileName);
+end
+end
+
+function fileName = outputFileNameFromSuffix(inputName, outputSuffix)
+outputSuffix = char(string(outputSuffix));
+if isempty(outputSuffix)
+    outputSuffix = '_pnnn_output.mat';
+end
+[~, ~, suffixExt] = fileparts(outputSuffix);
+if isempty(suffixExt)
+    outputSuffix = [outputSuffix '.mat'];
+end
+fileName = [char(string(inputName)) outputSuffix];
+end
+
 function deployPackage = findLatestDeployPackage(resultsRoot, deployFileName)
 if nargin < 2 || strlength(string(deployFileName)) == 0
     deployFileName = 'deploy_package.mat';
@@ -197,7 +226,8 @@ end
 
 files = dir(fullfile(resultsRoot, '**', char(string(deployFileName))));
 if isempty(files)
-    error('No se encontró ningún %s en %s. Ejecuta primero train_PNNN_offline.m o ajusta cfg.deployPackage.', ...
+    error(['No se encontró ningún %s en %s. Ejecuta primero train_PNNN_offline.m ' ...
+        'o ajusta cfg.online.deployPackage/cfg.output.deployPackage.'], ...
         char(string(deployFileName)), resultsRoot);
 end
 [~, idx] = max([files.datenum]);
@@ -221,6 +251,14 @@ end
 
 function value = getCfgField(cfg, fieldName, defaultValue)
 if isfield(cfg, fieldName)
+    value = cfg.(fieldName);
+else
+    value = defaultValue;
+end
+end
+
+function value = getCfgStruct(cfg, fieldName, defaultValue)
+if isstruct(cfg) && isfield(cfg, fieldName) && isstruct(cfg.(fieldName))
     value = cfg.(fieldName);
 else
     value = defaultValue;
@@ -252,7 +290,8 @@ end
 end
 
 function value = getCfgString(cfg, fieldName, defaultValue)
-if isfield(cfg, fieldName)
+if isstruct(cfg) && isfield(cfg, fieldName) && ...
+        strlength(string(cfg.(fieldName))) > 0
     value = cfg.(fieldName);
 else
     value = defaultValue;
@@ -267,6 +306,21 @@ elseif isnumeric(value)
 end
 
 value = strtrim(char(value));
+end
+
+function value = getCfgLogical(cfg, fieldName, defaultValue)
+if isstruct(cfg) && isfield(cfg, fieldName)
+    rawValue = cfg.(fieldName);
+    if islogical(rawValue) && isscalar(rawValue)
+        value = rawValue;
+    elseif isnumeric(rawValue) && isscalar(rawValue) && isfinite(rawValue)
+        value = logical(rawValue);
+    else
+        value = defaultValue;
+    end
+else
+    value = defaultValue;
+end
 end
 
 function values = toCellstr(value)

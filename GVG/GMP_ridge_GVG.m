@@ -1,4 +1,4 @@
-function [NMSE_val_GMP, NMSE_val_ridge_1e3, NMSE_val_ridge_1e4, rManagerGMP] = GMP_ridge_GVG(x, y, perc)
+function [NMSE_val_GMP, NMSE_val_ridge_1e3, NMSE_val_ridge_1e4, rManagerGMP] = GMP_ridge_GVG(x, y, percOrCfg, cfgGMP)
 % GMP_ridge_GVG - Evaluate a GMP baseline and ridge variants.
 %
 % This function builds the GMP regressor basis used as a PNNN baseline,
@@ -7,15 +7,25 @@ function [NMSE_val_GMP, NMSE_val_ridge_1e3, NMSE_val_ridge_1e4, rManagerGMP] = G
 %
 % Inputs:
 %   x, y - Modeled-block input and output signals under the local X/Y convention.
-%   perc - Optional fraction of samples used for identification.
+%   percOrCfg - Optional fraction of samples or cfg.gmp.classic struct.
+%   cfgGMP - Optional GMP config when percOrCfg is numeric.
 %
 % Outputs:
 %   NMSE_val_GMP - Validation NMSE for the pinv GMP fit.
 %   NMSE_val_ridge_1e3, NMSE_val_ridge_1e4 - Validation NMSE for ridge fits.
 %   rManagerGMP - GVG regressor manager restricted to the selected GMP basis.
 
-if nargin < 3
+if nargin < 3 || isempty(percOrCfg)
+    cfgGMP = struct();
     perc = 0.04;   % por defecto, 4% de muestras para identificación
+elseif isstruct(percOrCfg)
+    cfgGMP = percOrCfg;
+    perc = cfgValue(cfgGMP, 'identificationFraction', 0.04);
+else
+    perc = percOrCfg;
+    if nargin < 4 || isempty(cfgGMP)
+        cfgGMP = struct();
+    end
 end
 
 % Asegurar formato columna
@@ -29,7 +39,7 @@ if ~all(isfinite(x)) || ~all(isfinite(y))
 end
 
 % Seed configuration for reproducibility
-seed = 1004;
+seed = cfgValue(cfgGMP, 'seed', 1004);
 prevRng = rng;
 cleanupRng = onCleanup(@() rng(prevRng));
 rng(seed);
@@ -39,15 +49,14 @@ nid = sel_indices(x, y, perc);
 %fprintf('Number of samples for modeling %d sa. For validation: %d sa.\n', floor(length(x)*perc), length(x));
 
 %% Configuracion GMP por bloques
-cfgGMP = struct();
-cfgGMP.Qpmax = 50;
-cfgGMP.Qnmax = 50;
-cfgGMP.Pmax = 13;
-cfgGMP.maxPopulation = 100;
-cfgGMP.selectionMode = 'omp';
-cfgGMP.blockSize = 8192;
-cfgGMP.lambda1 = 1e-3;
-cfgGMP.lambda2 = 1e-4;
+cfgGMP.Qpmax = cfgValue(cfgGMP, 'Qpmax', 50);
+cfgGMP.Qnmax = cfgValue(cfgGMP, 'Qnmax', 50);
+cfgGMP.Pmax = cfgValue(cfgGMP, 'Pmax', 13);
+cfgGMP.maxPopulation = cfgValue(cfgGMP, 'maxPopulation', 100);
+cfgGMP.selectionMode = cfgValue(cfgGMP, 'selectionMode', 'omp');
+cfgGMP.blockSize = cfgValue(cfgGMP, 'blockSize', 8192);
+cfgGMP.lambda1 = cfgValue(cfgGMP, 'lambda1', 1e-3);
+cfgGMP.lambda2 = cfgValue(cfgGMP, 'lambda2', 1e-4);
 
 % Se inicializa la base GMP sin llamar a GVGgenerateModel para evitar
 % materializar matrices U gigantes en identificacion/validacion.
@@ -81,4 +90,12 @@ fprintf("GMP: %d coeficientes activos (regresores)\n", nCoeff_GMP);
 
 rManagerGMP.prepareForSave();
 
+end
+
+function value = cfgValue(cfg, fieldName, defaultValue)
+if isstruct(cfg) && isfield(cfg, fieldName) && ~isempty(cfg.(fieldName))
+    value = cfg.(fieldName);
+else
+    value = defaultValue;
+end
 end

@@ -20,7 +20,7 @@ El proyecto se llamaba antes `NN_DPD`. Ese nombre puede aparecer en rutas o resu
 - `train_PNNN_offline.m`: flujo offline recomendado. Carga `config/getPNNNConfig.m`, entrena la NN phase-normalized desde una medida `x/y` y guarda `model.mat`, `predictions.mat`, `metadata.txt`, `deploy_package.mat` y `performance_summary.*`.
   Nota actual: este script tiene pruning activado por defecto con `cfg.pruning.enabled = true` y `cfg.pruning.sparsity = 0.3`. Para obtener un baseline sin pruning, hay que desactivarlo explícitamente o usar overrides/configuración adecuada antes de ejecutar.
 - `run_PNNN_online_from_xy.m`: flujo online recomendado. Carga `deploy_package.mat`, lee un nuevo fichero `x/y`, aplica la red y guarda la señal estimada.
-  Si `cfg.output.deployPackage` está vacío, usa el último fichero con nombre `cfg.output.deployFileName` encontrado bajo `results/`.
+  La configuración online está en `cfg.online`. Si `cfg.output.deployPackage` o `cfg.online.deployPackage` apuntan a un fichero concreto, se usa ese deploy. Si ambos están vacíos y `cfg.online.useLatestDeploy=true`, usa el último fichero con nombre `cfg.output.deployFileName` encontrado bajo `results/`. Si `cfg.online.inputFile` está vacío, usa `cfg.data.measurementFile`.
 - `legacy/main.m`: flujo histórico monolítico de un experimento.
 - `legacy/main_bucle.m`: flujo histórico de barrido de activaciones y arquitecturas.
 - `toolbox/phase_norm/buildPhaseNormDataset.m`: constructor compartido de features.
@@ -64,7 +64,7 @@ La normalización de fase usa `r = conj(x(n))/abs(x(n))`. La red predice `r*y(n)
 
 ## Performance Summaries
 
-Cada entrenamiento offline guarda un resumen ligero de rendimiento en `performance_summary.mat`, `performance_summary.csv` y `performance_summary.txt`. También exporta `performance_summary_compact.csv` con nombres MATLAB seguros y `performance_summary_compact_display.csv` con encabezados de lectura directa. Para cargar una tabla MATLAB nativa desde un experimento:
+Cada entrenamiento offline guarda un resumen ligero de rendimiento en `performance_summary.mat`, `performance_summary.csv` y `performance_summary.txt`. También exporta `performance_summary_compact.csv` con nombres MATLAB seguros y `performance_summary_compact_display.csv` con encabezados de lectura directa. Estos nombres de export están centralizados en `cfg.output`. Para cargar una tabla MATLAB nativa desde un experimento:
 
 ```matlab
 S = load('ruta/al/experimento/performance_summary.mat', 'performance');
@@ -97,11 +97,12 @@ sweepTable = pnnnPerformanceToTable(S.performanceStack);
 ## Mantenimiento
 
 - No dupliques el constructor phase-normalized dentro de scripts.
-- Mantén los defaults operativos en `config/getPNNNConfig.m`; los scripts oficiales deben cargar esa configuración y sobrescribir solo lo necesario.
+- Mantén los defaults operativos en `config/getPNNNConfig.m`; los scripts oficiales deben cargar esa configuración y sobrescribir solo lo necesario. `cfg.online` controla deploy/input/output del flujo online; `cfg.output` centraliza nombres de artefactos y reporting/export.
 - Usa overrides agrupados (`cfg.paths`, `cfg.data`, `cfg.model`, `cfg.training`, `cfg.pruning`, `cfg.gmp`, `cfg.output`, `cfg.sweep`); los aliases legacy planos de configuración ya no se mantienen.
 - Mantén `metadata.mappingMode`, `metadata.featMode`, ratios y `splitSeed` al guardar modelos.
 - El flujo online no reentrena y no necesita `y`: para `xy_forward` toma `x` como entrada, genera `yhat` y evita guardar la predicción bajo campos `x/xi`.
 - La señal candidata para laboratorio debe verificarse por script y por campos guardados. En el flujo actual, `run_PNNN_online_from_xy.m` guarda `yhat`/`yhat_all` como salida principal documentada.
+- El baseline GMP clásico lee sus defaults desde `cfg.gmp.classic` cuando lo lanza `train_PNNN_offline.m`; `GMP_ridge_GVG.m` conserva sus defaults internos para compatibilidad con llamadas antiguas.
 
 ## Pruning Sweeps
 

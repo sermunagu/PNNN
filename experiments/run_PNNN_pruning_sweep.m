@@ -49,13 +49,13 @@ sweepConfig.timestamp = timestamp;
 sweepConfig.sweepFolder = sweepFolder;
 sweepConfig.gmpBaselineDir = gmpBaselineDir;
 sweepConfig.exportFigure = baseCfg.sweep.exportFigure;
+sweepConfig.outputFiles = baseCfg.output;
 
 save(fullfile(sweepFolder, 'sweep_config.mat'), 'sweepConfig');
 writeSweepConfigTxt(fullfile(sweepFolder, 'sweep_config.txt'), sweepConfig);
 
 %% ======================= RUN SWEEP =======================
 performanceStack = struct([]);
-sweepSummary = table();
 
 for sweepIdx = 1:numel(sparsityList)
     sparsity = sparsityList(sweepIdx);
@@ -83,7 +83,7 @@ for sweepIdx = 1:numel(sparsityList)
     sweepSummary = pnnnPerformanceToTable(performanceStack);
     sweepSummary = addSweepBaselineGain(sweepSummary);
     exportSweepSummary(sweepSummary, performanceStack, sweepFolder, ...
-        baseCfg.sweep.exportFigure);
+        baseCfg.output, baseCfg.sweep.exportFigure);
 end
 
 sweepSummary = pnnnPerformanceToTable(performanceStack);
@@ -92,7 +92,7 @@ sweepSummaryCompact = pnnnPerformanceCompactTable(sweepSummary);
 [~, sweepSummaryDisplayLines] = pnnnPerformanceDisplayTable(sweepSummaryCompact);
 printDisplayLines('PNNN compact sweep summary', sweepSummaryDisplayLines);
 exportSweepSummary(sweepSummary, performanceStack, sweepFolder, ...
-    baseCfg.sweep.exportFigure);
+    baseCfg.output, baseCfg.sweep.exportFigure);
 
 fprintf('\nSweep summary saved in: %s\n', sweepFolder);
 
@@ -145,7 +145,7 @@ if isempty(performanceStack)
 else
     [performanceStack, runPerformance] = alignStructFields( ...
         performanceStack, runPerformance);
-    performanceStack = [performanceStack runPerformance]; %#ok<AGROW>
+    performanceStack = [performanceStack runPerformance];
 end
 end
 
@@ -171,33 +171,75 @@ end
 sweepSummary.GainNMSE_Test_vs_Baseline_dB = gain;
 end
 
-function exportSweepSummary(sweepSummary, performanceStack, sweepFolder, exportFigure)
+function exportSweepSummary(sweepSummary, performanceStack, sweepFolder, ...
+    outputCfg, exportFigure)
+if nargin < 4 || ~isstruct(outputCfg)
+    outputCfg = struct();
+end
+if nargin < 5
+    exportFigure = false;
+end
+fileNames = sweepOutputFileNames(outputCfg);
 sweepSummaryCompact = pnnnPerformanceCompactTable(sweepSummary);
 [sweepSummaryDisplay, ~] = pnnnPerformanceDisplayTable(sweepSummaryCompact);
 
-save(fullfile(sweepFolder, 'performance_stack.mat'), 'performanceStack');
-save(fullfile(sweepFolder, 'sweep_summary.mat'), 'sweepSummary', ...
+save(fullfile(sweepFolder, fileNames.performanceStackFileName), ...
+    'performanceStack');
+save(fullfile(sweepFolder, fileNames.sweepSummaryMatFileName), 'sweepSummary', ...
     'sweepSummaryCompact', 'sweepSummaryDisplay');
-save(fullfile(sweepFolder, 'sweep_summary_compact.mat'), ...
+save(fullfile(sweepFolder, fileNames.sweepSummaryCompactMatFileName), ...
     'sweepSummaryCompact', 'sweepSummaryDisplay');
-writetable(sweepSummary, fullfile(sweepFolder, 'sweep_summary.csv'));
+writetable(sweepSummary, fullfile(sweepFolder, fileNames.sweepSummaryCsvFileName));
 writetable(sweepSummaryCompact, fullfile(sweepFolder, ...
-    'sweep_summary_compact.csv'));
+    fileNames.sweepSummaryCompactCsvFileName));
 writecell(sweepSummaryDisplay, fullfile(sweepFolder, ...
-    'sweep_summary_compact_display.csv'));
+    fileNames.sweepSummaryCompactDisplayCsvFileName));
 
 try
-    writetable(sweepSummary, fullfile(sweepFolder, 'sweep_summary.xlsx'));
+    writetable(sweepSummary, fullfile(sweepFolder, ...
+        fileNames.sweepSummaryXlsxFileName));
     writetable(sweepSummaryCompact, fullfile(sweepFolder, ...
-        'sweep_summary_compact.xlsx'));
+        fileNames.sweepSummaryCompactXlsxFileName));
 catch ME
     warning('run_PNNN_pruning_sweep:xlsxExportFailed', ...
         'Could not write sweep summary XLSX files: %s', ME.message);
 end
 
-if nargin >= 4 && exportFigure
+if exportFigure
     pnnnPerformanceFigure(sweepSummaryCompact, sweepFolder, ...
-        'sweep_summary_table');
+        fileNames.sweepSummaryTableBaseName);
+end
+end
+
+function fileNames = sweepOutputFileNames(outputCfg)
+fileNames = struct();
+fileNames.performanceStackFileName = outputName(outputCfg, ...
+    'performanceStackFileName', 'performance_stack.mat');
+fileNames.sweepSummaryMatFileName = outputName(outputCfg, ...
+    'sweepSummaryMatFileName', 'sweep_summary.mat');
+fileNames.sweepSummaryCsvFileName = outputName(outputCfg, ...
+    'sweepSummaryCsvFileName', 'sweep_summary.csv');
+fileNames.sweepSummaryXlsxFileName = outputName(outputCfg, ...
+    'sweepSummaryXlsxFileName', 'sweep_summary.xlsx');
+fileNames.sweepSummaryCompactMatFileName = outputName(outputCfg, ...
+    'sweepSummaryCompactMatFileName', 'sweep_summary_compact.mat');
+fileNames.sweepSummaryCompactCsvFileName = outputName(outputCfg, ...
+    'sweepSummaryCompactCsvFileName', 'sweep_summary_compact.csv');
+fileNames.sweepSummaryCompactDisplayCsvFileName = outputName(outputCfg, ...
+    'sweepSummaryCompactDisplayCsvFileName', ...
+    'sweep_summary_compact_display.csv');
+fileNames.sweepSummaryCompactXlsxFileName = outputName(outputCfg, ...
+    'sweepSummaryCompactXlsxFileName', 'sweep_summary_compact.xlsx');
+fileNames.sweepSummaryTableBaseName = outputName(outputCfg, ...
+    'sweepSummaryTableBaseName', 'sweep_summary_table');
+end
+
+function value = outputName(outputCfg, fieldName, defaultValue)
+if isstruct(outputCfg) && isfield(outputCfg, fieldName) && ...
+        strlength(string(outputCfg.(fieldName))) > 0
+    value = outputCfg.(fieldName);
+else
+    value = defaultValue;
 end
 end
 

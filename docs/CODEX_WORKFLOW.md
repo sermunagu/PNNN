@@ -90,7 +90,7 @@ Entrenamiento:
 matlab -batch "train_PNNN_offline"
 ```
 
-Nota actual: `train_PNNN_offline.m` carga `config/getPNNNConfig.m` y tiene pruning activado por defecto con `cfg.pruning.enabled = true` y `cfg.pruning.sparsity = 0.3`. Si se quiere un baseline sin pruning, hay que desactivarlo explícitamente o usar overrides/configuración adecuada antes de ejecutar. Para cambiar sparsities de sweep, editar `sparsityList` en `experiments/run_PNNN_pruning_sweep.m`.
+Nota actual: `train_PNNN_offline.m` carga `config/getPNNNConfig.m` y tiene pruning activado por defecto con `cfg.pruning.enabled = true` y `cfg.pruning.sparsity = 0.3`. Si se quiere un baseline sin pruning, hay que desactivarlo explícitamente o usar overrides/configuración adecuada antes de ejecutar. Para cambiar sparsities de sweep, editar `cfg.sweep.sparsityList` en `config/getPNNNConfig.m`.
 
 Inferencia:
 

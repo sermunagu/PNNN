@@ -52,6 +52,10 @@ deployFile = fullfile(expFolder, cfg.output.deployFileName);
 performanceMatFile = fullfile(expFolder, cfg.output.performanceSummaryMatFileName);
 performanceCsvFile = fullfile(expFolder, cfg.output.performanceSummaryCsvFileName);
 performanceTxtFile = fullfile(expFolder, cfg.output.performanceSummaryTxtFileName);
+performanceCompactCsvFile = fullfile(expFolder, ...
+    cfg.output.performanceSummaryCompactCsvFileName);
+performanceCompactDisplayCsvFile = fullfile(expFolder, ...
+    cfg.output.performanceSummaryCompactDisplayCsvFileName);
 
 if cfg.output.skipIfExists && exist(modelFile, "file")
     fprintf("[SKIP] El experimento ya existe: %s\n", modelFile);
@@ -153,7 +157,7 @@ if cfg.gmp.runBaseline
         fprintf("[INFO] Cargando baseline GMP desde %s\n", gmpFile);
     else
         [NMSE_val_GMP, NMSE_val_ridge_1e3, NMSE_val_ridge_1e4, rManagerGMP] = ...
-            GMP_ridge_GVG(x_in, y_out);
+            GMP_ridge_GVG(x_in, y_out, cfg.gmp.classic);
         save(gmpFile, "NMSE_val_GMP", "NMSE_val_ridge_1e3", ...
             "NMSE_val_ridge_1e4", "rManagerGMP", "-v7.3");
         fprintf("[INFO] Guardando baseline GMP en %s\n", gmpFile);
@@ -167,7 +171,7 @@ end
 if cfg.gmp.runJusto
     fprintf("\n--- GMP JUSTO (mismo split que la NN) ---\n");
     cfgGMP = cfg.gmp.justo;
-    M = cfg.model.M; %#ok<NASGU>
+    M = cfg.model.M;
 
     gmpFileJusto = fullfile(gmpBaseFolder, ...
         "GMP_baseline_" + string(cfg.data.measurementName) + "_" + ...
@@ -404,6 +408,8 @@ performanceFiles.metadataFile = txtFile;
 performanceFiles.performanceMatFile = performanceMatFile;
 performanceFiles.performanceCsvFile = performanceCsvFile;
 performanceFiles.performanceTxtFile = performanceTxtFile;
+performanceFiles.performanceCompactCsvFile = performanceCompactCsvFile;
+performanceFiles.performanceCompactDisplayCsvFile = performanceCompactDisplayCsvFile;
 
 performance = buildPNNNPerformanceSummary(metadata, performanceFiles);
 savePNNNPerformanceSummary(expFolder, performance);
@@ -430,6 +436,8 @@ finalSummary.performance = performance;
 finalSummary.performanceMatFile = performanceMatFile;
 finalSummary.performanceCsvFile = performanceCsvFile;
 finalSummary.performanceTxtFile = performanceTxtFile;
+finalSummary.performanceCompactCsvFile = performanceCompactCsvFile;
+finalSummary.performanceCompactDisplayCsvFile = performanceCompactDisplayCsvFile;
 
 printFinalPNNNSummary(finalSummary);
 

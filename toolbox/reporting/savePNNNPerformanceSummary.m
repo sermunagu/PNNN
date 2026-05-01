@@ -18,21 +18,31 @@ if ~exist(expFolder, 'dir')
     mkdir(expFolder);
 end
 
+fileNames = reportingFileNames();
 matFile = performancePathOrDefault(performance, ...
-    'performanceMatFile', fullfile(expFolder, 'performance_summary.mat'));
+    'performanceMatFile', fullfile(expFolder, ...
+    fileNames.performanceSummaryMatFileName));
 csvFile = performancePathOrDefault(performance, ...
-    'performanceCsvFile', fullfile(expFolder, 'performance_summary.csv'));
+    'performanceCsvFile', fullfile(expFolder, ...
+    fileNames.performanceSummaryCsvFileName));
 txtFile = performancePathOrDefault(performance, ...
-    'performanceTxtFile', fullfile(expFolder, 'performance_summary.txt'));
+    'performanceTxtFile', fullfile(expFolder, ...
+    fileNames.performanceSummaryTxtFileName));
+compactCsvFile = performancePathOrDefault(performance, ...
+    'performanceCompactCsvFile', fullfile(expFolder, ...
+    fileNames.performanceSummaryCompactCsvFileName));
+compactDisplayCsvFile = performancePathOrDefault(performance, ...
+    'performanceCompactDisplayCsvFile', fullfile(expFolder, ...
+    fileNames.performanceSummaryCompactDisplayCsvFileName));
 
 performance.performanceMatFile = string(matFile);
 performance.performanceCsvFile = string(csvFile);
 performance.performanceTxtFile = string(txtFile);
+performance.performanceCompactCsvFile = string(compactCsvFile);
+performance.performanceCompactDisplayCsvFile = string(compactDisplayCsvFile);
 performanceTable = pnnnPerformanceToTable(performance);
 compactTable = pnnnPerformanceCompactTable(performanceTable);
 [compactDisplay, compactLines] = pnnnPerformanceDisplayTable(compactTable);
-compactCsvFile = siblingFile(csvFile, '_compact.csv');
-compactDisplayCsvFile = siblingFile(csvFile, '_compact_display.csv');
 
 save(matFile, 'performance', 'performanceTable', 'compactTable', ...
     'compactDisplay');
@@ -53,6 +63,38 @@ if isfield(performance, fieldName)
 end
 end
 
+function fileNames = reportingFileNames()
+fileNames = struct();
+fileNames.performanceSummaryMatFileName = "performance_summary.mat";
+fileNames.performanceSummaryCsvFileName = "performance_summary.csv";
+fileNames.performanceSummaryTxtFileName = "performance_summary.txt";
+fileNames.performanceSummaryCompactCsvFileName = "performance_summary_compact.csv";
+fileNames.performanceSummaryCompactDisplayCsvFileName = ...
+    "performance_summary_compact_display.csv";
+
+if exist('getPNNNConfig', 'file') ~= 2
+    return;
+end
+
+try
+    cfg = getPNNNConfig();
+    if isfield(cfg, 'output')
+        fileNames = copyConfiguredNames(fileNames, cfg.output);
+    end
+catch
+end
+end
+
+function fileNames = copyConfiguredNames(fileNames, outputCfg)
+fields = fieldnames(fileNames);
+for k = 1:numel(fields)
+    fieldName = fields{k};
+    if isfield(outputCfg, fieldName) && strlength(string(outputCfg.(fieldName))) > 0
+        fileNames.(fieldName) = outputCfg.(fieldName);
+    end
+end
+end
+
 function writePerformanceTxt(txtFile, performance)
 fid = fopen(txtFile, 'w');
 if fid < 0
@@ -69,11 +111,6 @@ for k = 1:numel(fields)
 end
 
 clear cleanupObj;
-end
-
-function filePath = siblingFile(filePath, suffix)
-[folderPath, fileName] = fileparts(filePath);
-filePath = fullfile(folderPath, [fileName suffix]);
 end
 
 function printDisplayLines(titleText, lines)
