@@ -32,6 +32,7 @@ El proyecto se llamaba antes `NN_DPD`. Ese nombre puede aparecer en rutas o resu
 - `toolbox/reporting/savePNNNPerformanceSummary.m`: exporta `performance_summary.mat`, `.csv` y `.txt`.
 - `toolbox/reporting/pnnnPerformanceToTable.m`: convierte summaries individuales o apilados en tabla.
 - `toolbox/reporting/pnnnPerformanceCompactTable.m`: genera una tabla compacta DPD-facing desde un summary o desde la tabla larga.
+- `toolbox/reporting/pnnnPerformanceDisplayTable.m`: genera una vista compacta con encabezados legibles para consola/export.
 - `toolbox/reporting/loadPNNNPerformanceSummaries.m`: carga uno o varios `performance_summary.mat` y devuelve `[performanceStack, performanceTable, compactTable]`.
 - `toolbox/reporting/pnnnPerformanceFigure.m`: exportación visual opcional y silenciosa de tablas de performance.
 - `toolbox/io/`: helpers de selección X/Y y metadata/deploy.
@@ -62,7 +63,7 @@ La normalización de fase usa `r = conj(x(n))/abs(x(n))`. La red predice `r*y(n)
 
 ## Performance Summaries
 
-Cada entrenamiento offline guarda un resumen ligero de rendimiento en `performance_summary.mat`, `performance_summary.csv` y `performance_summary.txt`. Para cargar una tabla MATLAB nativa desde un experimento:
+Cada entrenamiento offline guarda un resumen ligero de rendimiento en `performance_summary.mat`, `performance_summary.csv` y `performance_summary.txt`. También exporta `performance_summary_compact.csv` con nombres MATLAB seguros y `performance_summary_compact_display.csv` con encabezados de lectura directa. Para cargar una tabla MATLAB nativa desde un experimento:
 
 ```matlab
 S = load('ruta/al/experimento/performance_summary.mat', 'performance');
@@ -81,6 +82,8 @@ También se puede pedir la tabla compacta desde un fichero concreto:
 ```matlab
 [P, T, Tcompact] = loadPNNNPerformanceSummaries('ruta/al/experimento/performance_summary.mat');
 disp(Tcompact);
+[displayCells, displayLines] = pnnnPerformanceDisplayTable(Tcompact);
+fprintf('%s\n', displayLines);
 ```
 
 Los sweeps guardan `performance_stack.mat`; también se puede convertir directamente:
@@ -121,6 +124,9 @@ Cada sweep genera una variable MATLAB nativa `sweepSummary` de tipo `table`, con
 - `sweep_summary.mat`
 - `sweep_summary.csv`
 - `sweep_summary.xlsx`, si `writetable` puede escribir Excel en el entorno MATLAB disponible.
+- `sweep_summary_compact.mat`
+- `sweep_summary_compact.csv`
+- `sweep_summary_compact_display.csv`
 
 Cada fila de `sweepSummary` sale del `performance_summary.mat` de su entrenamiento, no de parsing de consola. Los baselines GMP del sweep se guardan y reutilizan en una carpeta común:
 
@@ -128,7 +134,7 @@ Cada fila de `sweepSummary` sale del `performance_summary.mat` de su entrenamien
 results/pruning_sweeps/<timestamp>/GMP_baselines/
 ```
 
-Por consola se imprime una vista compacta `sweepSummaryCompact`, sin descripciones largas ni rutas completas, para revisar rápidamente sparsity, NMSE, ganancia frente al baseline, estado de máscara y fine-tuning.
+Por consola se imprime una vista compacta con encabezados DPD-facing para revisar rápidamente sparsity, NMSE de identificación/validación, ganancia frente al baseline 0%, GMP, PAPR, pruning y máscara.
 
 La columna `GainNMSE_Test_vs_Baseline_dB` se calcula como `NMSE_baseline - NMSE_actual`; por tanto, valores positivos indican mejora de NMSE TEST respecto al baseline sin pruning.
 

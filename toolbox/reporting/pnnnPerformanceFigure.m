@@ -27,8 +27,7 @@ try
         mkdir(outputFolder);
     end
 
-    visualTable = pnnnPerformanceCompactTable(performanceTable);
-    tableLines = tableToTextLines(visualTable);
+    [~, tableLines] = pnnnPerformanceDisplayTable(performanceTable);
     figFile = fullfile(outputFolder, [char(string(baseName)) '.fig']);
     pngFile = fullfile(outputFolder, [char(string(baseName)) '.png']);
 
@@ -69,69 +68,5 @@ try
 catch ME
     ok = false;
     message = string(ME.message);
-end
-end
-
-function lines = tableToTextLines(tbl)
-headers = string(tbl.Properties.VariableNames);
-data = table2cell(tbl);
-for rowIdx = 1:size(data, 1)
-    for colIdx = 1:size(data, 2)
-        data{rowIdx, colIdx} = formatValue(data{rowIdx, colIdx});
-    end
-end
-
-columnWidths = strlength(headers);
-for colIdx = 1:numel(headers)
-    for rowIdx = 1:size(data, 1)
-        columnWidths(colIdx) = max(columnWidths(colIdx), ...
-            strlength(string(data{rowIdx, colIdx})));
-    end
-end
-
-lines = strings(size(data, 1) + 2, 1);
-lines(1) = joinPaddedRow(headers, columnWidths);
-lines(2) = joinPaddedRow(repmat("-", 1, numel(headers)), columnWidths, "-");
-for rowIdx = 1:size(data, 1)
-    rowValues = strings(1, numel(headers));
-    for colIdx = 1:numel(headers)
-        rowValues(colIdx) = string(data{rowIdx, colIdx});
-    end
-    lines(rowIdx + 2) = joinPaddedRow(rowValues, columnWidths);
-end
-end
-
-function line = joinPaddedRow(values, columnWidths, fillChar)
-if nargin < 3
-    fillChar = " ";
-end
-
-padded = strings(1, numel(values));
-for colIdx = 1:numel(values)
-    value = string(values(colIdx));
-    if fillChar == "-"
-        padded(colIdx) = string(repmat('-', 1, columnWidths(colIdx)));
-    else
-        padded(colIdx) = string(sprintf('%-*s', columnWidths(colIdx), char(value)));
-    end
-end
-line = strjoin(padded, "  ");
-end
-
-function value = formatValue(value)
-if isstring(value) || ischar(value)
-    value = char(string(value));
-elseif islogical(value)
-    if value
-        value = 'true';
-    else
-        value = 'false';
-    end
-elseif isnumeric(value) && isscalar(value) && isfinite(value)
-    value = sprintf('%.4g', value);
-elseif isnumeric(value) && isscalar(value) && isnan(value)
-    value = 'N/A';
-elseif isnumeric(value)
-    value = mat2str(value);
 end
 end

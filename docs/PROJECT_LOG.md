@@ -933,6 +933,62 @@ Resultados:
 
 ---
 
+### 2026-05-01 — Retoque de gain baseline en tabla compacta
+
+Objetivo:
+- Hacer que `pnnnPerformanceCompactTable.m` devuelva el mismo gain frente a baseline al recibir `performanceStack` o `sweepSummary`.
+
+Archivos modificados:
+- `toolbox/reporting/pnnnPerformanceCompactTable.m`
+- `docs/PROJECT_LOG.md`
+
+Cambios realizados:
+- Si falta `GainNMSE_Test_vs_Baseline_dB`, la tabla compacta calcula `Gain_Baseline_dB` usando la fila con `Sparsity == 0` como referencia.
+- Para filas baseline/sin pruning con `Remaining` igual a `0` o `NaN`, intenta inferir el total podable desde `TotalPodableParams` o desde `Pruned + Remaining`.
+- No se cambió la tabla larga, el struct `performance`, métricas de entrenamiento, arquitectura, features, normalización, split, `mappingMode` ni semántica X/Y.
+
+Comandos ejecutados por Codex:
+- Checks Git ligeros.
+- Smoke tests MATLAB sintéticos y lectura de `.mat` existentes, sin ejecutar entrenamiento, inferencia ni sweep.
+
+Resultados:
+- No se ejecutaron entrenamientos.
+- No se ejecutaron inferencias.
+- No se ejecutó pruning sweep.
+- No se modificaron `measurements/`, `results/`, `generated_outputs/`, `.mat`, `.fig`, `deploy_package.mat` ni outputs experimentales.
+
+---
+
+### 2026-05-01 — Export y display de tablas larga/compacta
+
+Objetivo:
+- Generar siempre una tabla completa y una tabla compacta de performance, separando nombres internos MATLAB seguros de encabezados legibles para consola/export.
+
+Archivos nuevos:
+- `toolbox/reporting/pnnnPerformanceDisplayTable.m`
+
+Archivos modificados:
+- `toolbox/reporting/savePNNNPerformanceSummary.m`
+- `toolbox/reporting/pnnnPerformanceFigure.m`
+- `toolbox/reporting/pnnnPerformanceCompactTable.m`
+- `experiments/run_PNNN_pruning_sweep.m`
+- `README.md`
+- `docs/PROJECT_LOG.md`
+
+Cambios realizados:
+- `performance_summary.mat` conserva la tabla larga y añade `compactTable`/`compactDisplay`.
+- Cada offline run exporta `performance_summary_compact.csv` y `performance_summary_compact_display.csv`, además de la tabla larga existente.
+- Cada sweep exporta la tabla larga y la compacta apilada, incluyendo `sweep_summary_compact.*`.
+- La consola y la figura visual usan la vista compacta con encabezados DPD-facing.
+- No se cambiaron cálculos, métricas, arquitectura, pruning, mapping, split, features ni semántica X/Y.
+
+Comandos ejecutados por Codex:
+- Checks Git ligeros.
+- `git diff --check`.
+- Smoke tests MATLAB sintéticos y lectura de `.mat` existentes, sin ejecutar entrenamiento, inferencia ni sweep.
+
+---
+
 ## Plantilla para futuras entradas
 
 Copiar y rellenar esta plantilla después de cada intervención relevante:

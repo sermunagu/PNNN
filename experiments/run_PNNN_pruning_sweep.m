@@ -14,7 +14,7 @@ baseCfg = getPNNNConfig(repoRoot);
 
 %% ======================= SWEEP CONFIG =======================
 % Edit this list to choose the pruning sparsities evaluated by the sweep.
-sparsityList = [0 0.1 0.2 0.3 0.5 0.7];
+sparsityList = [0 0.3];
 fineTuneEpochs = baseCfg.sweep.fineTuneEpochs;
 
 includeBias = baseCfg.sweep.includeBias;
@@ -84,7 +84,8 @@ end
 sweepSummary = pnnnPerformanceToTable(performanceStack);
 sweepSummary = addSweepBaselineGain(sweepSummary);
 sweepSummaryCompact = pnnnPerformanceCompactTable(sweepSummary);
-disp(sweepSummaryCompact);
+[~, sweepSummaryDisplayLines] = pnnnPerformanceDisplayTable(sweepSummaryCompact);
+printDisplayLines('PNNN compact sweep summary', sweepSummaryDisplayLines);
 exportSweepSummary(sweepSummary, performanceStack, sweepFolder, ...
     baseCfg.sweep.exportFigure);
 
@@ -166,19 +167,39 @@ sweepSummary.GainNMSE_Test_vs_Baseline_dB = gain;
 end
 
 function exportSweepSummary(sweepSummary, performanceStack, sweepFolder, exportFigure)
+sweepSummaryCompact = pnnnPerformanceCompactTable(sweepSummary);
+[sweepSummaryDisplay, ~] = pnnnPerformanceDisplayTable(sweepSummaryCompact);
+
 save(fullfile(sweepFolder, 'performance_stack.mat'), 'performanceStack');
-save(fullfile(sweepFolder, 'sweep_summary.mat'), 'sweepSummary');
+save(fullfile(sweepFolder, 'sweep_summary.mat'), 'sweepSummary', ...
+    'sweepSummaryCompact', 'sweepSummaryDisplay');
+save(fullfile(sweepFolder, 'sweep_summary_compact.mat'), ...
+    'sweepSummaryCompact', 'sweepSummaryDisplay');
 writetable(sweepSummary, fullfile(sweepFolder, 'sweep_summary.csv'));
+writetable(sweepSummaryCompact, fullfile(sweepFolder, ...
+    'sweep_summary_compact.csv'));
+writecell(sweepSummaryDisplay, fullfile(sweepFolder, ...
+    'sweep_summary_compact_display.csv'));
 
 try
     writetable(sweepSummary, fullfile(sweepFolder, 'sweep_summary.xlsx'));
+    writetable(sweepSummaryCompact, fullfile(sweepFolder, ...
+        'sweep_summary_compact.xlsx'));
 catch ME
     warning('run_PNNN_pruning_sweep:xlsxExportFailed', ...
-        'Could not write sweep_summary.xlsx: %s', ME.message);
+        'Could not write sweep summary XLSX files: %s', ME.message);
 end
 
 if nargin >= 4 && exportFigure
-    pnnnPerformanceFigure(sweepSummary, sweepFolder, 'sweep_summary_table');
+    pnnnPerformanceFigure(sweepSummaryCompact, sweepFolder, ...
+        'sweep_summary_table');
+end
+end
+
+function printDisplayLines(titleText, lines)
+fprintf('\n%s\n', titleText);
+for k = 1:numel(lines)
+    fprintf('%s\n', char(lines(k)));
 end
 end
 

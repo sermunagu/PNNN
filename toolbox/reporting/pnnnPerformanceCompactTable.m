@@ -17,26 +17,35 @@ n = height(performanceTable);
 compactTable = table();
 compactTable.Measurement = tableColumnOrDefault(performanceTable, ...
     'Measurement', repmat("N/A", n, 1));
-compactTable.Sparsity = tableColumnOrDefault(performanceTable, ...
-    'SparsityTarget_pct', NaN(n, 1));
-compactTable.NMSE_Identificacion_dB = tableColumnOrDefault( ...
-    performanceTable, 'NMSE_TrainVal_dB', NaN(n, 1));
-compactTable.NMSE_Validacion_dB = tableColumnOrDefault( ...
-    performanceTable, 'NMSE_Test_dB', NaN(n, 1));
-compactTable.Gain_Baseline_dB = tableColumnOrDefault( ...
-    performanceTable, 'GainNMSE_Test_vs_Baseline_dB', NaN(n, 1));
+compactTable.Sparsity = tableColumnFirstAvailable(performanceTable, ...
+    {'SparsityTarget_pct', 'Sparsity'}, NaN(n, 1));
+compactTable.NMSE_Identificacion_dB = tableColumnFirstAvailable( ...
+    performanceTable, {'NMSE_TrainVal_dB', 'NMSE_Identificacion_dB'}, ...
+    NaN(n, 1));
+compactTable.NMSE_Validacion_dB = tableColumnFirstAvailable( ...
+    performanceTable, {'NMSE_Test_dB', 'NMSE_Validacion_dB'}, NaN(n, 1));
+compactTable.Gain_Baseline_dB = tableColumnFirstAvailable( ...
+    performanceTable, {'GainNMSE_Test_vs_Baseline_dB', ...
+    'Gain_Baseline_dB'}, NaN(n, 1));
+hasBaselineGainColumn = any(strcmp(performanceTable.Properties.VariableNames, ...
+    'GainNMSE_Test_vs_Baseline_dB')) || ...
+    any(strcmp(performanceTable.Properties.VariableNames, 'Gain_Baseline_dB'));
+if ~hasBaselineGainColumn || all(~isfinite(compactTable.Gain_Baseline_dB))
+    compactTable.Gain_Baseline_dB = computeBaselineGain(compactTable);
+end
 compactTable.Gain_GMP_dB = tableColumnFirstAvailable(performanceTable, ...
     {'GainNMSE_Test_vs_GMPJustoPinV_dB', ...
     'GainNMSE_Test_vs_GMPJustoRidge1e4_dB', ...
-    'GainNMSE_Test_vs_GMPJustoRidge1e3_dB'}, NaN(n, 1));
-compactTable.PAPR_Test_dB = tableColumnOrDefault(performanceTable, ...
-    'PAPR_Test_Pred_dB', NaN(n, 1));
-compactTable.Pruned = tableColumnOrDefault(performanceTable, ...
-    'PrunedParams', NaN(n, 1));
-compactTable.Remaining = tableColumnOrDefault(performanceTable, ...
-    'RemainingParams', NaN(n, 1));
-compactTable.Mask = tableColumnOrDefault(performanceTable, ...
-    'MaskIntegrityStatus', repmat("N/A", n, 1));
+    'GainNMSE_Test_vs_GMPJustoRidge1e3_dB', 'Gain_GMP_dB'}, NaN(n, 1));
+compactTable.PAPR_Test_dB = tableColumnFirstAvailable(performanceTable, ...
+    {'PAPR_Test_Pred_dB', 'PAPR_Test_dB'}, NaN(n, 1));
+compactTable.Pruned = tableColumnFirstAvailable(performanceTable, ...
+    {'PrunedParams', 'Pruned'}, NaN(n, 1));
+compactTable.Remaining = tableColumnFirstAvailable(performanceTable, ...
+    {'RemainingParams', 'Remaining'}, NaN(n, 1));
+compactTable.Mask = tableColumnFirstAvailable(performanceTable, ...
+    {'MaskIntegrityStatus', 'Mask'}, repmat("N/A", n, 1));
+compactTable = repairBaselineRemaining(compactTable, performanceTable);
 end
 
 function values = tableColumnOrDefault(summaryTable, columnName, defaultValues)
@@ -55,5 +64,60 @@ for k = 1:numel(columnNames)
         values = summaryTable.(columnName);
         return;
     end
+end
+end
+
+function gain = computeBaselineGain(compactTable)
+gain = NaN(height(compactTable), 1);
+baselineIdx = find(compactTable.Sparsity <= 0 & ...
+    isfinite(compactTable.NMSE_Validacion_dB), 1, 'first');
+if isempty(baselineIdx)
+    return;
+end
+
+baselineNmse = compactTable.NMSE_Validacion_dB(baselineIdx);
+validRows = isfinite(compactTable.NMSE_Validacion_dB);
+gain(validRows) = baselineNmse - compactTable.NMSE_Validacion_dB(validRows);
+end
+
+function compactTable = repairBaselineRemaining(compactTable, performanceTable)
+if height(compactTable) == 0
+    return;
+end
+
+baselineRows = compactTable.Sparsity <= 0;
+if any(strcmp(performanceTable.Properties.VariableNames, 'PruningEnabled'))
+    baselineRows = baselineRows | ~performanceTable.PruningEnabled;
+end
+
+needsRepair = baselineRows & ...
+    (~isfinite(compactTable.Remaining) | compactTable.Remaining == 0);
+if ~any(needsRepair)
+    return;
+end
+
+totalPodableParams = inferTotalPodableParams(compactTable, performanceTable);
+if isfinite(totalPodableParams)
+    compactTable.Remaining(needsRepair) = totalPodableParams;
+else
+    compactTable.Remaining(needsRepair) = NaN;
+end
+end
+
+function totalPodableParams = inferTotalPodableParams(compactTable, performanceTable)
+totalPodableParams = NaN;
+if any(strcmp(performanceTable.Properties.VariableNames, 'TotalPodableParams'))
+    totals = performanceTable.TotalPodableParams;
+    totals = totals(isfinite(totals) & totals > 0);
+    if ~isempty(totals)
+        totalPodableParams = max(totals);
+        return;
+    end
+end
+
+paramTotals = compactTable.Pruned + compactTable.Remaining;
+paramTotals = paramTotals(isfinite(paramTotals) & paramTotals > 0);
+if ~isempty(paramTotals)
+    totalPodableParams = max(paramTotals);
 end
 end
