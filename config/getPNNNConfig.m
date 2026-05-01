@@ -105,7 +105,9 @@ cfg.output.deployFileName = "deploy_package.mat";
 cfg.output.performanceSummaryMatFileName = "performance_summary.mat";
 cfg.output.performanceSummaryCsvFileName = "performance_summary.csv";
 cfg.output.performanceSummaryTxtFileName = "performance_summary.txt";
-cfg.output.deployPackage = "";
+cfg.output.deployPackage = ""; % Coge el último temporalmente
+% Para coger uno en concreto
+%cfg.output.deployPackage = "C:\Sergi\Investigacion\Códigos\NN\PNNN\results\...\deploy_package.mat";
 cfg.output.onlineOutputFileSuffix = '_pnnn_output.mat';
 cfg.output.saveMetadata = true;
 cfg.output.primaryOutputField = 'yhat';

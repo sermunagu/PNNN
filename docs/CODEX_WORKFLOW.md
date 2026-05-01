@@ -23,6 +23,7 @@ Los ficheros principales para guiar a Codex son:
 - `AGENTS.md`: reglas permanentes de trabajo.
 - `docs/PROJECT_LOG.md`: memoria técnica del proyecto.
 - `docs/RESULTS_INDEX.md`: índice rápido de resultados.
+- `docs/SUBAGENTS_WORKFLOW.md`: guía para usar subagentes de Codex en tareas acotadas.
 - `config/getPNNNConfig.m`: defaults oficiales usados por los scripts principales.
 
 ---

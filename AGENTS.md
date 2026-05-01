@@ -74,6 +74,8 @@ Para cada tarea:
 7. Actualizar `docs/PROJECT_LOG.md` con lo realizado.
 8. Indicar qué queda pendiente.
 
+Para tareas amplias con subagentes, usar `docs/SUBAGENTS_WORKFLOW.md` como guía.
+
 ---
 
 ## Sobre los diffs

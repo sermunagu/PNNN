@@ -1015,6 +1015,26 @@ Resultados:
 
 ---
 
+### 2026-05-01 — Guía de subagentes para Codex
+
+Objetivo:
+- Documentar cuándo usar subagentes de Codex en PNNN y cómo pedirlos de forma acotada.
+
+Archivos modificados:
+- `docs/SUBAGENTS_WORKFLOW.md`
+- `docs/CODEX_WORKFLOW.md`
+- `AGENTS.md`
+- `docs/PROJECT_LOG.md`
+
+Cambios realizados:
+- Se añadió una guía práctica de roles, casos de uso, límites y prompts reutilizables para subagentes.
+- `docs/CODEX_WORKFLOW.md` referencia la nueva guía.
+- `AGENTS.md` incluye una única línea de referencia para tareas amplias con subagentes.
+- No se modificó código MATLAB funcional por parte de Codex ni se tocaron resultados, medidas, modelos u outputs experimentales.
+- Se preservaron e incluirán en el commit las líneas comentadas añadidas manualmente por Sergi en `config/getPNNNConfig.m` para documentar el uso de `cfg.output.deployPackage`.
+
+---
+
 ## Plantilla para futuras entradas
 
 Copiar y rellenar esta plantilla después de cada intervención relevante:
