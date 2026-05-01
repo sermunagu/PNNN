@@ -14,6 +14,7 @@ Use this skill when Sergi asks to understand a specific file or a small set of f
 - Do not modify generated artifacts, measurements/, results/, generated_outputs/, .mat, .fig, or deploy_package.mat.
 - Respect PNNN X/Y semantics: X and Y are local to the modeled block. Do not assume mappingMode="xy_forward" means PA-forward modeling.
 - Keep explanations grounded in the actual file. Avoid vague summaries.
+- If the user writes in Spanish, answer in Spanish unless explicitly requested otherwise.
 
 ## Workflow
 

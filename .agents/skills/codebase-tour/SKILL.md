@@ -14,6 +14,7 @@ Use this skill when Sergi asks for a repository tour, architecture overview, or 
 - Do not modify generated artifacts, measurements/, results/, generated_outputs/, .mat, .fig, or deploy_package.mat.
 - Respect PNNN X/Y semantics: X and Y are local to the modeled block. Do not assume mappingMode="xy_forward" means PA-forward modeling.
 - Prefer lightweight inspection: git status, git log, git grep, rg --files, directory listings, and reading small source/docs files.
+- If the user writes in Spanish, answer in Spanish unless explicitly requested otherwise.
 
 ## Workflow
 
