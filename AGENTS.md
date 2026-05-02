@@ -161,7 +161,7 @@ Nota operativa actual:
 - La configuración oficial centralizada está en `config/getPNNNConfig.m`.
 - `train_PNNN_offline.m` tiene pruning activado por defecto con `cfg.pruning.enabled = true` y `cfg.pruning.sparsity = 0.3`.
 - Para obtener un baseline sin pruning, hay que desactivarlo explícitamente o usar overrides/configuración adecuada antes de ejecutar.
-- Para cambiar sparsities de sweep, editar `sparsityList` en `experiments/run_PNNN_pruning_sweep.m`.
+- Para cambiar sparsities de sweep, editar `cfg.sweep.sparsityList` en `config/getPNNNConfig.m`.
 
 Después, el usuario pegará los resultados para interpretarlos.
 
