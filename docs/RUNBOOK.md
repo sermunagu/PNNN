@@ -1,0 +1,160 @@
+# RUNBOOK.md
+
+## Propósito
+
+Guía operativa mínima para trabajar en **PNNN** sin convertir el repositorio en un desguace de comandos, notas y variantes temporales.
+
+Este documento no sustituye a `README.md`. El `README.md` explica el proyecto; este runbook indica qué comandos usar y qué debe ejecutar Codex frente a qué debe ejecutar Sergi.
+
+---
+
+## Reglas de uso
+
+- Mantener solo comandos oficiales o casi oficiales.
+- No añadir cada prueba temporal.
+- No pegar logs largos.
+- Si un comando tarda o entrena, lo ejecuta Sergi salvo permiso explícito.
+- Si un comando es solo de inspección o smoke test mínimo, lo puede ejecutar Codex.
+- Si aparece una nueva rutina estable, primero validar que realmente se repite antes de añadirla aquí.
+
+---
+
+## Flujo recomendado con Codex y ChatGPT
+
+1. Codex inspecciona y modifica cambios pequeños.
+2. Codex no ejecuta entrenamientos ni inferencias largas.
+3. Codex puede ejecutar el smoke test mínimo si procede.
+4. Codex genera el handoff local.
+5. Sergi pasa `LAST_DIFF.patch` o `LAST_RESPONSE.md` a ChatGPT para revisión técnica.
+6. Sergi ejecuta entrenamientos/sweeps/inferencias largas manualmente.
+7. Los resultados consolidados se guardan en `docs/RESULTS_INDEX.md`.
+
+---
+
+## Handoff local para ChatGPT
+
+Desde la raíz del repo:
+
+```powershell
+.\tools\make_handoff.ps1 -TaskSummary "Resumen breve de la tarea" -RiskLevel "low"
+```
+
+Genera:
+
+```text
+.codex_handoff/LAST_RESPONSE.md
+.codex_handoff/LAST_DIFF.patch
+.codex_handoff/GIT_STATUS.txt
+.codex_handoff/FILES_CHANGED.txt
+```
+
+Uso previsto:
+
+- `LAST_RESPONSE.md`: resumen humano de lo que hizo Codex.
+- `LAST_DIFF.patch`: diff completo para revisar en ChatGPT.
+- `GIT_STATUS.txt`: estado corto del repo.
+- `FILES_CHANGED.txt`: lista de archivos afectados.
+
+`.codex_handoff/` no se versiona.
+
+---
+
+## Smoke test mínimo
+
+Este test es pequeño a nivel de proyecto: no carga medidas, no abre resultados, no entrena, no infiere y no escribe artefactos.
+
+Desde PowerShell:
+
+```powershell
+matlab -batch "run('tools/smoke_test_pnnn.m')"
+```
+
+Qué comprueba:
+
+- presencia de archivos esenciales;
+- visibilidad de funciones clave;
+- construcción de `cfg = getPNNNConfig(repoRoot)`;
+- campos básicos de configuración;
+- convención de salida principal `yhat`;
+- existencia de directorios de código esperados.
+
+Qué no comprueba:
+
+- calidad de entrenamiento;
+- NMSE;
+- generación de modelos;
+- lectura de medidas;
+- inferencia online;
+- compatibilidad completa de todos los scripts.
+
+Nota: arrancar MATLAB puede tardar unos segundos, pero el test no debe lanzar cómputo pesado.
+
+---
+
+## Entrenamiento offline oficial
+
+Solo Sergi, salvo permiso explícito:
+
+```powershell
+matlab -batch "train_PNNN_offline"
+```
+
+Antes de ejecutarlo, revisar:
+
+- medida activa en `config/getPNNNConfig.m`;
+- `cfg.data.mappingMode`;
+- `cfg.pruning.enabled`;
+- `cfg.pruning.sparsity`;
+- `cfg.training.maxEpochs`;
+- ruta de salida bajo `results/`.
+
+Después:
+
+- revisar `performance_summary.*`;
+- actualizar `docs/RESULTS_INDEX.md` si el resultado es relevante;
+- añadir entrada en `docs/EXPERIMENTS_LOG.md` solo si cambia una decisión o sirve como hito.
+
+---
+
+## Sweep de pruning
+
+Solo Sergi, salvo permiso explícito:
+
+```powershell
+matlab -batch "run('experiments/run_PNNN_pruning_sweep.m')"
+```
+
+Antes de ejecutarlo:
+
+- revisar `cfg.sweep.sparsityList` en `config/getPNNNConfig.m`;
+- confirmar que el sweep no es más grande de lo necesario;
+- evitar barridos enormes sin hipótesis clara.
+
+Después:
+
+- mirar `sweep_summary_compact_display.csv`;
+- actualizar `docs/RESULTS_INDEX.md` si hay resultado consolidado;
+- añadir resumen en `docs/EXPERIMENTS_LOG.md` si el sweep decide algo.
+
+---
+
+## Inferencia online
+
+Solo Sergi, salvo permiso explícito:
+
+```powershell
+matlab -batch "run_PNNN_online_from_xy"
+```
+
+Comprobar antes:
+
+- qué `deploy_package.mat` se usará;
+- si `cfg.online.useLatestDeploy` está activo;
+- qué fichero de entrada se usará;
+- dónde se guardará la salida.
+
+Salida principal esperada:
+
+```matlab
+yhat
+```

@@ -73,6 +73,7 @@ Para cada tarea:
 6. Mostrar los diffs relevantes o indicar exactamente cómo verlos.
 7. Actualizar `docs/PROJECT_LOG.md` con lo realizado.
 8. Indicar qué queda pendiente.
+9. Si la tarea ha modificado archivos o es no trivial, generar el handoff local con `tools/make_handoff.ps1`.
 
 Para tareas amplias con subagentes, usar `docs/SUBAGENTS_WORKFLOW.md` como guía.
 
@@ -95,6 +96,40 @@ Si el diff es muy largo, mostrar:
 - líneas eliminadas importantes.
 
 No ocultar cambios relevantes.
+
+---
+
+## Handoff local para ChatGPT
+
+Al terminar cualquier tarea no trivial, y siempre después de modificar archivos, Codex debe crear o actualizar exactamente estos cuatro archivos locales:
+
+```text
+.codex_handoff/LAST_RESPONSE.md
+.codex_handoff/LAST_DIFF.patch
+.codex_handoff/GIT_STATUS.txt
+.codex_handoff/FILES_CHANGED.txt
+```
+
+La forma estándar de generarlos es:
+
+```powershell
+.\tools\make_handoff.ps1 -TaskSummary "Resumen breve de la tarea" -RiskLevel "low"
+```
+
+Reglas:
+
+- `.codex_handoff/` es local y no debe versionarse.
+- `LAST_RESPONSE.md` debe resumir la tarea, archivos modificados, archivos no tocados intencionadamente, comandos ejecutados, comandos que debe ejecutar Sergi, riesgos/dudas y si se actualizaron `PROJECT_LOG.md` / `RESULTS_INDEX.md`.
+- `LAST_DIFF.patch` debe contener el diff completo actual, incluyendo archivos nuevos mediante `git add -N`, pero sin incluir artefactos pesados/protegidos.
+- El patch debe excluir `measurements/`, `results/`, `generated_outputs/`, `*.mat`, `*.fig` y `deploy_package.mat`.
+- Si no hay diff, `LAST_DIFF.patch` debe decirlo explícitamente.
+- No sustituir el resumen técnico por una descarga de consola larga. El handoff debe ser corto, útil y revisable.
+
+El handoff no reemplaza a `docs/PROJECT_LOG.md` ni a `docs/RESULTS_INDEX.md`:
+
+- `PROJECT_LOG.md` registra intervenciones relevantes del proyecto.
+- `RESULTS_INDEX.md` registra resultados numéricos consolidados.
+- `.codex_handoff/` es solo el paquete temporal para que Sergi lo lleve a ChatGPT.
 
 ---
 
@@ -217,4 +252,5 @@ Una tarea se considera terminada cuando:
 - se ha actualizado `docs/PROJECT_LOG.md`;
 - se ha mostrado `git diff --stat`;
 - no quedan cambios ocultos o ambiguos;
+- se ha generado `.codex_handoff/` con `tools/make_handoff.ps1` cuando aplique;
 - se indica claramente qué debe ejecutar el usuario, si aplica.

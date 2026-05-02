@@ -3,6 +3,9 @@
 /results/
 /generated_outputs/
 
+# Local Codex/ChatGPT handoff artifacts
+/.codex_handoff/
+
 # MATLAB binary outputs and deploy packages
 *.mat
 deploy_package.mat
