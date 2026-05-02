@@ -36,6 +36,7 @@ if ~exist(sweepFolder, 'dir')
 end
 
 gmpBaselineDir = fullfile(sweepFolder, char(baseCfg.gmp.baselineFolderName));
+warmStartSourceFile = resolveSweepWarmStartSource(baseCfg);
 
 sweepConfig = struct();
 sweepConfig.sparsityList = sparsityList;
@@ -50,6 +51,7 @@ sweepConfig.sweepFolder = sweepFolder;
 sweepConfig.gmpBaselineDir = gmpBaselineDir;
 sweepConfig.exportFigure = baseCfg.sweep.exportFigure;
 sweepConfig.outputFiles = baseCfg.output;
+sweepConfig.warmStartSourceFile = warmStartSourceFile;
 
 save(fullfile(sweepFolder, 'sweep_config.mat'), 'sweepConfig');
 writeSweepConfigTxt(fullfile(sweepFolder, 'sweep_config.txt'), sweepConfig);
@@ -74,7 +76,7 @@ for sweepIdx = 1:numel(sparsityList)
     cfgOverrides = buildSweepOverrides( ...
         measurementName, baseCfg.paths.measurementsDir, runResultsRoot, ...
         gmpBaselineDir, sparsity, pruningScope, includeBias, ...
-        freezePruned, fineTuneEpochs);
+        freezePruned, fineTuneEpochs, warmStartSourceFile);
 
     train_PNNN_offline;
 
@@ -99,7 +101,7 @@ fprintf('\nSweep summary saved in: %s\n', sweepFolder);
 %% ======================= LOCAL HELPERS =======================
 function cfgOverrides = buildSweepOverrides(measurementName, measurementFolder, ...
     runResultsRoot, gmpBaselineDir, sparsity, pruningScope, includeBias, ...
-    freezePruned, fineTuneEpochs)
+    freezePruned, fineTuneEpochs, warmStartSourceFile)
 
 cfgOverrides = struct();
 cfgOverrides.data.measurementName = measurementName;
@@ -107,6 +109,10 @@ cfgOverrides.data.measurementFile = fullfile(measurementFolder, [measurementName
 cfgOverrides.paths.resultsDir = runResultsRoot;
 cfgOverrides.runtime.clearCommandWindow = false;
 cfgOverrides.gmp.baselineDir = gmpBaselineDir;
+if nargin >= 10 && strlength(string(warmStartSourceFile)) > 0
+    cfgOverrides.warmStart.sourceFile = warmStartSourceFile;
+    cfgOverrides.warmStart.useLatestDeploy = false;
+end
 
 cfgOverrides.pruning = struct();
 cfgOverrides.pruning.sparsity = sparsity;
@@ -123,6 +129,41 @@ else
     cfgOverrides.pruning.fineTuneEnabled = true;
     cfgOverrides.pruning.fineTuneEpochs = fineTuneEpochs;
 end
+end
+
+function warmStartSourceFile = resolveSweepWarmStartSource(baseCfg)
+warmStartSourceFile = "";
+if ~isfield(baseCfg, 'warmStart') || ~baseCfg.warmStart.enabled
+    return;
+end
+if strlength(string(baseCfg.warmStart.sourceFile)) > 0
+    warmStartSourceFile = string(baseCfg.warmStart.sourceFile);
+    fprintf('[INFO] Sweep warm start source fixed for all sparsities: %s\n', ...
+        warmStartSourceFile);
+    return;
+end
+if ~baseCfg.warmStart.useLatestDeploy
+    return;
+end
+
+warmStartSourceFile = findLatestSweepWarmStartDeploy( ...
+    baseCfg.paths.resultsDir, baseCfg.output.deployFileName);
+fprintf('[INFO] Sweep warm start source fixed for all sparsities: %s\n', ...
+    warmStartSourceFile);
+end
+
+function deployFile = findLatestSweepWarmStartDeploy(resultsRoot, deployFileName)
+if nargin < 2 || strlength(string(deployFileName)) == 0
+    deployFileName = 'deploy_package.mat';
+end
+
+files = dir(fullfile(resultsRoot, '**', char(string(deployFileName))));
+if isempty(files)
+    error('No se encontró ningún %s en %s para warm start del sweep.', ...
+        char(string(deployFileName)), resultsRoot);
+end
+[~, idx] = max([files.datenum]);
+deployFile = fullfile(files(idx).folder, files(idx).name);
 end
 
 function performance = loadPerformanceSummary(performanceFile)

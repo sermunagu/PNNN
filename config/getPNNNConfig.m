@@ -145,8 +145,19 @@ cfg.online.outputDir = cfg.paths.generatedOutputsDir;
 cfg.online.outputSuffix = "_pnnn_output";
 cfg.online.primaryOutputField = "yhat";
 
+cfg.warmStart = struct();
+cfg.warmStart.enabled = false;
+cfg.warmStart.sourceFile = "";
+cfg.warmStart.sourceType = "auto";
+cfg.warmStart.useLatestDeploy = false;
+cfg.warmStart.reuseNormStats = true;
+cfg.warmStart.requireCompatibility = true;
+cfg.warmStart.skipInitialTraining = false; % false: reentrenar modelo rapidamente
+                                           % true: cargo modelo denso y aplico sparsidad y fine_tune
+cfg.warmStart.maxEpochsOverride = [];
+
 cfg.sweep = struct();
-cfg.sweep.sparsityList = [0 0.1 0.2 0.3 0.4 0.5 0.6];
+cfg.sweep.sparsityList = [0 0.3 0.5 0.6 0.7 0.8 0.9];
 cfg.sweep.fineTuneEpochs = cfg.pruning.fineTuneEpochs;
 cfg.sweep.includeBias = cfg.pruning.includeBias;
 cfg.sweep.freezePruned = cfg.pruning.freezePruned;

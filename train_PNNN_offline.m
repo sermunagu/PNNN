@@ -29,6 +29,8 @@ if cfg.runtime.clearCommandWindow
     clc;
 end
 cfg.pruning = validatePruningConfig(cfg.pruning);
+cfg.warmStart = validateWarmStartConfig(cfg.warmStart);
+[warmStartState, cfg] = resolveWarmStartState(cfg);
 
 %% ======================= TAGS DE EXPERIMENTO =======================
 dateTag  = string(datestr(now, cfg.output.dateFormat));
@@ -198,27 +200,47 @@ if cfg.gmp.runJusto
 end
 
 %% ======================= NORMALIZACIÓN =======================
-muX = mean(inputMtxTrain, 1);
-sigmaX = std(inputMtxTrain, 0, 1);
-sigmaX(sigmaX == 0) = 1;
+warmStartState = validateWarmStartCompatibility( ...
+    warmStartState, cfg, inputDim, 2);
+
+if warmStartState.loaded && cfg.warmStart.reuseNormStats
+    normStats = warmStartState.normStats;
+    validateNormStatsDimensions(normStats, inputDim, 2);
+    fprintf("[INFO] Warm start: reutilizando normStats de %s\n", ...
+        warmStartState.resolvedFile);
+else
+    muX = mean(inputMtxTrain, 1);
+    sigmaX = std(inputMtxTrain, 0, 1);
+    sigmaX(sigmaX == 0) = 1;
+
+    muY = mean(outputMtxTrain, 1);
+    sigmaY = std(outputMtxTrain, 0, 1);
+    sigmaY(sigmaY == 0) = 1;
+
+    normStats = struct('muX',muX,'sigmaX',sigmaX,'muY',muY,'sigmaY',sigmaY);
+end
+
+muX = normStats.muX;
+sigmaX = normStats.sigmaX;
+muY = normStats.muY;
+sigmaY = normStats.sigmaY;
+
+outputMtxTrainN = (outputMtxTrain - muY) ./ sigmaY;
+outputMtxValN   = (outputMtxVal   - muY) ./ sigmaY;
 
 inputMtxTrainN = (inputMtxTrain - muX) ./ sigmaX;
 inputMtxValN   = (inputMtxVal   - muX) ./ sigmaX;
 inputMtxTestN  = (inputMtxTest  - muX) ./ sigmaX;
 inputMtxAllN   = (inputMtxAll   - muX) ./ sigmaX;
 
-muY = mean(outputMtxTrain, 1);
-sigmaY = std(outputMtxTrain, 0, 1);
-sigmaY(sigmaY == 0) = 1;
-
-outputMtxTrainN = (outputMtxTrain - muY) ./ sigmaY;
-outputMtxValN   = (outputMtxVal   - muY) ./ sigmaY;
-
-normStats = struct('muX',muX,'sigmaX',sigmaX,'muY',muY,'sigmaY',sigmaY);
-
 %% ======================= ARQUITECTURA Y ENTRENAMIENTO =======================
 layers = buildLayers(inputDim, cfg.model.numNeurons, cfg.model.actType);
 totalParams = countDenseParams(inputDim, cfg.model.numNeurons, 2);
+if warmStartState.loaded
+    initialNetwork = warmStartState.netDPD;
+else
+    initialNetwork = layers;
+end
 
 numObsTrain  = size(inputMtxTrainN,1);
 iterPerEpoch = max(1, floor(numObsTrain/cfg.training.miniBatchSize));
@@ -243,7 +265,14 @@ opts = trainingOptions(cfg.training.optimizer, ...
     Verbose             = cfg.training.verbose, ...
     VerboseFrequency    = valFrequency);
 
-[netDPD, info] = trainnet(inputMtxTrainN, outputMtxTrainN, layers, "mse", opts);
+if warmStartState.loaded && cfg.warmStart.skipInitialTraining
+    netDPD = warmStartState.netDPD;
+    info = struct();
+    fprintf("[INFO] Warm start: skipInitialTraining=true, se omite trainnet.\n");
+else
+    [netDPD, info] = trainnet(inputMtxTrainN, outputMtxTrainN, ...
+        initialNetwork, "mse", opts);
+end
 
 pruningStats = initPruningStats(cfg.pruning);
 pruningState = struct();
@@ -265,7 +294,9 @@ if cfg.pruning.enabled
     end
 end
 
-saveTrainingProgressFigure(info, expFolder);
+if ~(isstruct(info) && isempty(fieldnames(info)))
+    saveTrainingProgressFigure(info, expFolder);
+end
 
 %% ======================= EVALUACIÓN =======================
 inputMtxTrainValN = [inputMtxTrainN; inputMtxValN];
@@ -313,6 +344,17 @@ metadata.InitialLearnRate = cfg.training.initialLearnRate;
 metadata.LearnRateDropPeriod = cfg.training.learnRateDropPeriod;
 metadata.LearnRateDropFactor = cfg.training.learnRateDropFactor;
 metadata.ValidationPatience = cfg.training.validationPatience;
+metadata.warmStart_enabled = warmStartState.enabled;
+metadata.warmStart_sourceFile = char(string(cfg.warmStart.sourceFile));
+metadata.warmStart_sourceType = char(string(warmStartState.sourceType));
+metadata.warmStart_resolvedFile = char(string(warmStartState.resolvedFile));
+metadata.warmStart_reuseNormStats = cfg.warmStart.reuseNormStats;
+metadata.warmStart_skipInitialTraining = cfg.warmStart.skipInitialTraining;
+metadata.warmStart_maxEpochsOverride = cfg.warmStart.maxEpochsOverride;
+metadata.warmStart_compatibilityStatus = char(string( ...
+    warmStartState.compatibilityStatus));
+metadata.warmStart_compatibilityMessage = char(string( ...
+    warmStartState.compatibilityMessage));
 metadata.Ns = Ns;
 metadata.NTrain = numel(idxTrain);
 metadata.NVal = numel(idxVal);
@@ -464,4 +506,377 @@ for i = 1:numel(numNeurons)
 end
 
 layers = [layers fullyConnectedLayer(2, Name="fcOut")];
+end
+
+function warmStartCfg = validateWarmStartConfig(warmStartCfg)
+if nargin < 1 || isempty(warmStartCfg)
+    warmStartCfg = struct();
+end
+
+warmStartCfg.enabled = cfgLogical(warmStartCfg, 'enabled', false);
+warmStartCfg.sourceFile = cfgString(warmStartCfg, 'sourceFile', "");
+warmStartCfg.sourceType = lower(cfgString(warmStartCfg, 'sourceType', "auto"));
+warmStartCfg.useLatestDeploy = cfgLogical(warmStartCfg, ...
+    'useLatestDeploy', false);
+warmStartCfg.reuseNormStats = cfgLogical(warmStartCfg, ...
+    'reuseNormStats', true);
+warmStartCfg.requireCompatibility = cfgLogical(warmStartCfg, ...
+    'requireCompatibility', true);
+warmStartCfg.skipInitialTraining = cfgLogical(warmStartCfg, ...
+    'skipInitialTraining', false);
+if ~isfield(warmStartCfg, 'maxEpochsOverride')
+    warmStartCfg.maxEpochsOverride = [];
+elseif ~isempty(warmStartCfg.maxEpochsOverride) && ...
+        (~isnumeric(warmStartCfg.maxEpochsOverride) || ...
+        ~isscalar(warmStartCfg.maxEpochsOverride) || ...
+        ~isfinite(warmStartCfg.maxEpochsOverride) || ...
+        warmStartCfg.maxEpochsOverride <= 0)
+    error("cfg.warmStart.maxEpochsOverride debe ser [] o un escalar positivo.");
+end
+
+validTypes = ["auto", "model", "deploy"];
+if ~any(strcmp(warmStartCfg.sourceType, validTypes))
+    error('cfg.warmStart.sourceType debe ser "auto", "model" o "deploy".');
+end
+end
+
+function [state, cfg] = resolveWarmStartState(cfg)
+state = initWarmStartState(cfg.warmStart);
+if ~cfg.warmStart.enabled
+    return;
+end
+
+sourceFile = char(string(cfg.warmStart.sourceFile));
+if isempty(strtrim(sourceFile)) && cfg.warmStart.useLatestDeploy
+    sourceFile = findLatestWarmStartDeploy( ...
+        cfg.paths.resultsDir, cfg.output.deployFileName);
+end
+if isempty(strtrim(sourceFile))
+    error(['cfg.warmStart.enabled=true requiere cfg.warmStart.sourceFile ' ...
+        'o cfg.warmStart.useLatestDeploy=true.']);
+end
+if exist(sourceFile, 'file') ~= 2
+    error('No existe el fichero warm start: %s', sourceFile);
+end
+
+loadedData = load(sourceFile);
+[netDPD, normStats, sourceInfo, actualType] = unpackWarmStartData( ...
+    loadedData, cfg.warmStart.sourceType, sourceFile);
+
+state.loaded = true;
+state.netDPD = netDPD;
+state.normStats = normStats;
+state.sourceInfo = sourceInfo;
+state.sourceType = actualType;
+state.resolvedFile = string(sourceFile);
+state.compatibilityStatus = "LOADED";
+state.compatibilityMessage = "Warm start source loaded; compatibility pending.";
+
+if ~isempty(cfg.warmStart.maxEpochsOverride)
+    cfg.training.maxEpochs = cfg.warmStart.maxEpochsOverride;
+end
+end
+
+function state = initWarmStartState(warmStartCfg)
+state = struct();
+state.enabled = warmStartCfg.enabled;
+state.loaded = false;
+state.sourceFile = string(warmStartCfg.sourceFile);
+state.sourceType = string(warmStartCfg.sourceType);
+state.resolvedFile = "";
+state.netDPD = [];
+state.normStats = struct();
+state.sourceInfo = struct();
+state.compatibilityStatus = "DISABLED";
+state.compatibilityMessage = "Warm start disabled.";
+end
+
+function [netDPD, normStats, sourceInfo, actualType] = unpackWarmStartData( ...
+    loadedData, requestedType, sourceFile)
+requestedType = string(requestedType);
+if requestedType == "auto"
+    if isfield(loadedData, 'deploy')
+        requestedType = "deploy";
+    elseif isfield(loadedData, 'netDPD')
+        requestedType = "model";
+    else
+        error('No se pudo detectar sourceType en %s.', sourceFile);
+    end
+end
+
+sourceInfo = struct();
+switch requestedType
+    case "deploy"
+        if ~isfield(loadedData, 'deploy') || ~isstruct(loadedData.deploy)
+            error('El warm start deploy no contiene la variable deploy.');
+        end
+        deploy = loadedData.deploy;
+        if isfield(deploy, 'netDPD')
+            netDPD = deploy.netDPD;
+        elseif isfield(deploy, 'netModel')
+            netDPD = deploy.netModel;
+        else
+            error('El deploy warm start no contiene netDPD/netModel.');
+        end
+        normStats = requiredStructField(deploy, 'normStats', ...
+            'El deploy warm start no contiene deploy.normStats.');
+        if isfield(deploy, 'cfgDeploy')
+            sourceInfo.cfgDeploy = deploy.cfgDeploy;
+        end
+        if isfield(loadedData, 'metadata')
+            sourceInfo.metadata = loadedData.metadata;
+        end
+
+    case "model"
+        if isfield(loadedData, 'netDPD')
+            netDPD = loadedData.netDPD;
+        elseif isfield(loadedData, 'netModel')
+            netDPD = loadedData.netModel;
+        else
+            error('El model warm start no contiene netDPD/netModel.');
+        end
+        normStats = requiredStructField(loadedData, 'normStats', ...
+            'El model warm start no contiene normStats.');
+        if isfield(loadedData, 'cfg')
+            sourceInfo.cfg = loadedData.cfg;
+        end
+        if isfield(loadedData, 'metadata')
+            sourceInfo.metadata = loadedData.metadata;
+        end
+
+    otherwise
+        error('sourceType no soportado: %s', requestedType);
+end
+
+actualType = requestedType;
+end
+
+function value = requiredStructField(s, fieldName, errorMessage)
+if ~isstruct(s) || ~isfield(s, fieldName) || ~isstruct(s.(fieldName))
+    error(errorMessage);
+end
+value = s.(fieldName);
+end
+
+function state = validateWarmStartCompatibility(state, cfg, inputDim, outputDim)
+if ~state.enabled
+    return;
+end
+if ~state.loaded
+    error('Warm start enabled pero no se cargó ninguna red.');
+end
+
+issues = {};
+warnings = {};
+[issues, warnings] = compareWarmStartField( ...
+    issues, warnings, state, 'M', cfg.model.M);
+[issues, warnings] = compareWarmStartField( ...
+    issues, warnings, state, 'orders', cfg.model.orders);
+[issues, warnings] = compareWarmStartField( ...
+    issues, warnings, state, 'featMode', cfg.model.featMode);
+[issues, warnings] = compareWarmStartField( ...
+    issues, warnings, state, 'numNeurons', cfg.model.numNeurons);
+[issues, warnings] = compareWarmStartField( ...
+    issues, warnings, state, 'actType', cfg.model.actType);
+[issues, warnings] = compareWarmStartField( ...
+    issues, warnings, state, 'mappingMode', cfg.data.mappingMode);
+[issues, warnings] = compareWarmStartField( ...
+    issues, warnings, state, 'temporalExtension', cfg.model.temporalExtension);
+[issues, warnings] = compareWarmStartField( ...
+    issues, warnings, state, 'removeDC', cfg.model.removeDC);
+
+[sourceInputDim, hasInputDim] = sourceValue(state.sourceInfo, 'inputDim');
+if hasInputDim
+    if ~valuesMatch(sourceInputDim, inputDim)
+        issues{end+1} = sprintf('inputDim source=%s current=%s', ...
+            valueText(sourceInputDim), valueText(inputDim));
+    end
+else
+    warnings{end+1} = 'inputDim no disponible en metadata/cfgDeploy.';
+end
+
+dims = inferNetworkDims(state.netDPD);
+if isfinite(dims.inputDim) && dims.inputDim ~= inputDim
+    issues{end+1} = sprintf('network inputDim source=%d current=%d', ...
+        dims.inputDim, inputDim);
+elseif ~isfinite(dims.inputDim)
+    warnings{end+1} = 'input dimension no inferible desde la red.';
+end
+if isfinite(dims.outputDim) && dims.outputDim ~= outputDim
+    issues{end+1} = sprintf('network outputDim source=%d current=%d', ...
+        dims.outputDim, outputDim);
+elseif ~isfinite(dims.outputDim)
+    warnings{end+1} = 'output dimension no inferible desde la red.';
+end
+
+if ~isempty(issues)
+    message = strjoin(string(issues), '; ');
+    state.compatibilityStatus = "FAILED";
+    state.compatibilityMessage = message;
+    if cfg.warmStart.requireCompatibility
+        error('Warm start incompatible: %s', message);
+    else
+        warning('train_PNNN_offline:WarmStartCompatibility', ...
+            'Warm start incompatible but allowed: %s', message);
+    end
+elseif ~isempty(warnings)
+    state.compatibilityStatus = "WARN";
+    state.compatibilityMessage = strjoin(string(warnings), '; ');
+    warning('train_PNNN_offline:WarmStartCompatibilityMissing', ...
+        'Warm start compatibility warnings: %s', state.compatibilityMessage);
+else
+    state.compatibilityStatus = "OK";
+    state.compatibilityMessage = "Warm start compatible.";
+end
+end
+
+function [issues, warnings] = compareWarmStartField( ...
+    issues, warnings, state, fieldName, expectedValue)
+[sourceFieldValue, hasValue] = sourceValue(state.sourceInfo, fieldName);
+if ~hasValue
+    warnings{end+1} = sprintf('%s no disponible en metadata/cfgDeploy.', ...
+        fieldName);
+    return;
+end
+if ~valuesMatch(sourceFieldValue, expectedValue)
+    issues{end+1} = sprintf('%s source=%s current=%s', fieldName, ...
+        valueText(sourceFieldValue), valueText(expectedValue));
+end
+end
+
+function [value, hasValue] = sourceValue(sourceInfo, fieldName)
+hasValue = false;
+value = [];
+
+if isfield(sourceInfo, 'cfgDeploy') && isfield(sourceInfo.cfgDeploy, fieldName)
+    value = sourceInfo.cfgDeploy.(fieldName);
+    hasValue = true;
+    return;
+end
+
+if isfield(sourceInfo, 'cfg')
+    cfg = sourceInfo.cfg;
+    switch fieldName
+        case {'M', 'orders', 'featMode', 'numNeurons', 'actType', ...
+                'temporalExtension', 'removeDC'}
+            if isfield(cfg, 'model') && isfield(cfg.model, fieldName)
+                value = cfg.model.(fieldName);
+                hasValue = true;
+                return;
+            end
+        case 'mappingMode'
+            if isfield(cfg, 'data') && isfield(cfg.data, 'mappingMode')
+                value = cfg.data.mappingMode;
+                hasValue = true;
+                return;
+            end
+    end
+end
+
+if isfield(sourceInfo, 'metadata') && isfield(sourceInfo.metadata, fieldName)
+    value = sourceInfo.metadata.(fieldName);
+    hasValue = true;
+end
+end
+
+function tf = valuesMatch(a, b)
+if isnumeric(a) || islogical(a) || isnumeric(b) || islogical(b)
+    if ~(isnumeric(a) || islogical(a)) || ~(isnumeric(b) || islogical(b))
+        tf = false;
+        return;
+    end
+    tf = isequal(double(a(:).'), double(b(:).'));
+else
+    tf = strcmp(string(a), string(b));
+end
+end
+
+function txt = valueText(value)
+if isnumeric(value) || islogical(value)
+    txt = mat2str(value);
+elseif isstring(value)
+    txt = char(strjoin(value(:).', ","));
+elseif ischar(value)
+    txt = value;
+else
+    txt = '<unsupported>';
+end
+end
+
+function dims = inferNetworkDims(net)
+dims = struct('inputDim', NaN, 'outputDim', NaN);
+if ~(isobject(net) || isstruct(net))
+    return;
+end
+
+try
+    if isprop(net, 'Layers')
+        layers = net.Layers;
+    elseif isfield(net, 'Layers')
+        layers = net.Layers;
+    else
+        return;
+    end
+
+    if ~isempty(layers) && isprop(layers(1), 'InputSize')
+        dims.inputDim = prod(double(layers(1).InputSize));
+    end
+    if ~isempty(layers) && isprop(layers(end), 'OutputSize')
+        dims.outputDim = double(layers(end).OutputSize);
+    end
+catch
+end
+end
+
+function validateNormStatsDimensions(normStats, inputDim, outputDim)
+requiredFields = {'muX', 'sigmaX', 'muY', 'sigmaY'};
+for k = 1:numel(requiredFields)
+    if ~isfield(normStats, requiredFields{k})
+        error('Warm start normStats no contiene %s.', requiredFields{k});
+    end
+end
+if numel(normStats.muX) ~= inputDim || numel(normStats.sigmaX) ~= inputDim
+    error('Warm start normStats incompatible: inputDim=%d, muX=%d, sigmaX=%d.', ...
+        inputDim, numel(normStats.muX), numel(normStats.sigmaX));
+end
+if numel(normStats.muY) ~= outputDim || numel(normStats.sigmaY) ~= outputDim
+    error('Warm start normStats incompatible: outputDim=%d, muY=%d, sigmaY=%d.', ...
+        outputDim, numel(normStats.muY), numel(normStats.sigmaY));
+end
+end
+
+function deployFile = findLatestWarmStartDeploy(resultsRoot, deployFileName)
+if nargin < 2 || strlength(string(deployFileName)) == 0
+    deployFileName = 'deploy_package.mat';
+end
+
+files = dir(fullfile(resultsRoot, '**', char(string(deployFileName))));
+if isempty(files)
+    error('No se encontró ningún %s en %s para warm start.', ...
+        char(string(deployFileName)), resultsRoot);
+end
+[~, idx] = max([files.datenum]);
+deployFile = fullfile(files(idx).folder, files(idx).name);
+end
+
+function value = cfgString(cfgStruct, fieldName, defaultValue)
+if isstruct(cfgStruct) && isfield(cfgStruct, fieldName) && ...
+        strlength(string(cfgStruct.(fieldName))) > 0
+    value = string(cfgStruct.(fieldName));
+else
+    value = string(defaultValue);
+end
+end
+
+function value = cfgLogical(cfgStruct, fieldName, defaultValue)
+value = defaultValue;
+if ~isstruct(cfgStruct) || ~isfield(cfgStruct, fieldName)
+    return;
+end
+rawValue = cfgStruct.(fieldName);
+if islogical(rawValue) && isscalar(rawValue)
+    value = rawValue;
+elseif isnumeric(rawValue) && isscalar(rawValue) && isfinite(rawValue)
+    value = logical(rawValue);
+end
 end

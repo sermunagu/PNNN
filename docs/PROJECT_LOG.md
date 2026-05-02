@@ -1085,6 +1085,46 @@ Comandos ejecutados por Sergi:
 
 ---
 
+### 2026-05-02 — Warm start puntual para PNNN
+
+Objetivo:
+- Añadir un mecanismo simple de warm start desde `model.mat` o `deploy_package.mat` sin cambiar el flujo por defecto.
+
+Archivos modificados:
+- `config/getPNNNConfig.m`
+- `train_PNNN_offline.m`
+- `experiments/run_PNNN_pruning_sweep.m`
+- `toolbox/reporting/buildPNNNPerformanceSummary.m`
+- `toolbox/reporting/pnnnPerformanceToTable.m`
+- `README.md`
+- `docs/PROJECT_LOG.md`
+
+Cambios realizados:
+- Se añadió `cfg.warmStart` con `enabled=false` por defecto.
+- `train_PNNN_offline.m` puede cargar una red/normStats desde `model.mat` o `deploy_package.mat`, validar compatibilidad y usar esa red como inicialización.
+- `reuseNormStats=true` reutiliza la normalización cargada; si no, se conserva el cálculo actual desde TRAIN.
+- `skipInitialTraining=true` permite saltar `trainnet` para pruebas de pruning/evaluación, sin convertirlo en pruning iterativo.
+- En sweeps, `useLatestDeploy=true` se resuelve una vez antes de sobrescribir `cfg.paths.resultsDir`, para que todos los puntos arranquen desde la misma fuente.
+- Se añadieron campos warm-start a metadata y a la tabla larga de performance.
+- No se cambiaron features, mapping, split, pruning, GMP, métricas, arquitectura ni semántica X/Y.
+- No se ejecutaron entrenamientos, inferencias ni sweeps.
+
+---
+
+### 2026-05-02 — Revisión mínima de warm start puntual
+
+Objetivo:
+- Corregir detalles de trazabilidad y robustez del warm start sin cambiar el diseño ni el flujo por defecto.
+
+Cambios realizados:
+- En el pruning sweep, un `cfg.warmStart.sourceFile` explícito se conserva como fuente fija para todos los puntos del sweep y queda registrado en `sweepConfig.warmStartSourceFile`.
+- La validación de compatibilidad del warm start también comprueba `cfg.model.numNeurons` y `cfg.model.actType` cuando esa información está disponible en la fuente.
+- Si `skipInitialTraining=true`, se evita llamar a la exportación de progreso de entrenamiento con un `info` vacío.
+- No se cambiaron features, mapping, split, pruning, GMP, métricas, arquitectura ni semántica X/Y.
+- No se ejecutaron entrenamientos, inferencias ni sweeps.
+
+---
+
 ## Plantilla para futuras entradas
 
 Copiar y rellenar esta plantilla después de cada intervención relevante:

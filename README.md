@@ -104,6 +104,29 @@ sweepTable = pnnnPerformanceToTable(S.performanceStack);
 - La señal candidata para laboratorio debe verificarse por script y por campos guardados. En el flujo actual, `run_PNNN_online_from_xy.m` guarda `yhat`/`yhat_all` como salida principal documentada.
 - El baseline GMP clásico lee sus defaults desde `cfg.gmp.classic` cuando lo lanza `train_PNNN_offline.m`; `GMP_ridge_GVG.m` conserva sus defaults internos para compatibilidad con llamadas antiguas.
 
+## Warm Start
+
+`cfg.warmStart` permite arrancar un entrenamiento desde un `model.mat` o `deploy_package.mat` existente sin cambiar el flujo por defecto. Con `cfg.warmStart.enabled = false` el entrenamiento sigue empezando desde cero.
+
+Ejemplo con una fuente concreta:
+
+```matlab
+cfg.warmStart.enabled = true;
+cfg.warmStart.sourceFile = "C:\ruta\al\model.mat";      % o deploy_package.mat
+cfg.warmStart.sourceType = "auto";                      % auto, model, deploy
+cfg.warmStart.reuseNormStats = true;
+```
+
+Ejemplo usando el último deploy disponible bajo `results/`:
+
+```matlab
+cfg.warmStart.enabled = true;
+cfg.warmStart.sourceFile = "";
+cfg.warmStart.useLatestDeploy = true;
+```
+
+Warm start no implementa pruning iterativo: en un sweep, cada sparsity arranca desde la fuente configurada, no desde el resultado anterior. `cfg.warmStart.skipInitialTraining = true` salta `trainnet` y continúa con pruning/evaluación usando la red cargada, útil solo para experimentos controlados.
+
 ## Pruning Sweeps
 
 El script `experiments/run_PNNN_pruning_sweep.m` permite lanzar varios entrenamientos secuenciales con distintos valores de sparsity sin editar manualmente `train_PNNN_offline.m`. Para cambiar las sparsities del sweep, edita `cfg.sweep.sparsityList` en `config/getPNNNConfig.m`.
