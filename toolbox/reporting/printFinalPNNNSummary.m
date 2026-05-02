@@ -27,6 +27,9 @@ fprintf('%-33s: %s / %s\n', 'PAPR pred/ref TRAIN+VAL', ...
 fprintf('%-33s: %s / %s\n', 'PAPR pred/ref TEST', ...
     dbValue(summary.PAPR_test_NN), dbValue(summary.PAPR_test_ref));
 
+fprintf('\n-------------------- RF Metrics ----------------------------\n');
+printRFMetricSection(summary);
+
 fprintf('\n-------------------- Pruning -------------------------------\n');
 printPruningSection(pruningStats);
 
@@ -124,6 +127,22 @@ fprintf('%-33s: %s\n', 'Gain vs GMP justo pinv', gainValue(gmpJustoPinv, nnTest)
 fprintf('%-33s: %s\n', 'Gain vs GMP justo ridge 1e-4', gainValue(gmpJustoRidge, nnTest));
 end
 
+function printRFMetricSection(summary)
+fprintf('%-33s: %s / %s\n', 'Time-domain EVM TEST', ...
+    dbValue(getField(summary, 'EVM_test_dB', NaN)), ...
+    pctText(getField(summary, 'EVM_test_pct', NaN)));
+
+acpr = getField(summary, 'ACPR_test_pred', struct());
+fprintf('%-33s: %s / %s / %s / %s\n', 'ACPR pred TEST L2/L1/R1/R2', ...
+    dbValue(getField(acpr, 'acprLeft2_dB', NaN)), ...
+    dbValue(getField(acpr, 'acprLeft1_dB', NaN)), ...
+    dbValue(getField(acpr, 'acprRight1_dB', NaN)), ...
+    dbValue(getField(acpr, 'acprRight2_dB', NaN)));
+if isfield(acpr, 'status') && ~strcmp(string(acpr.status), "OK")
+    fprintf('%-33s: %s\n', 'ACPR pred TEST status', textValue(acpr.status));
+end
+end
+
 function txt = modelDescription(cfg)
 neurons = strjoin(string(cfg.model.numNeurons), 'x');
 txt = sprintf('phaseNorm %s | M=%d | orders=%s | N=%s | %s', ...
@@ -168,6 +187,14 @@ end
 function txt = pctValue(value)
 if isFiniteScalar(value)
     txt = sprintf('%.2f %%', 100*value);
+else
+    txt = 'N/A';
+end
+end
+
+function txt = pctText(value)
+if isFiniteScalar(value)
+    txt = sprintf('%.2f %%', value);
 else
     txt = 'N/A';
 end

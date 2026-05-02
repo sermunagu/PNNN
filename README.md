@@ -28,6 +28,7 @@ El proyecto se llamaba antes `NN_DPD`. Ese nombre puede aparecer en rutas o resu
 - `toolbox/phase_norm/predictPhaseNorm.m`: reconstrucción compleja de la predicción phase-normalized.
 - `toolbox/data/splitTrainValTest.m`: particionado train/val/test reproducible.
 - `toolbox/metrics/calc_NMSE.m`: métrica NMSE en frecuencia para análisis.
+- `toolbox/metrics/computeEVM.m` y `toolbox/metrics/computeACPR.m`: métricas RF ligeras para reporting.
 - `toolbox/reporting/printFinalPNNNSummary.m`: resumen final por consola.
 - `toolbox/reporting/buildPNNNPerformanceSummary.m`: resumen ligero de rendimiento por experimento, sin señales pesadas.
 - `toolbox/reporting/savePNNNPerformanceSummary.m`: exporta `performance_summary.mat`, `.csv` y `.txt`.
@@ -162,6 +163,8 @@ results/pruning_sweeps/<timestamp>/GMP_baselines/
 Por consola se imprime una vista compacta con encabezados DPD-facing para revisar rápidamente sparsity, NMSE de identificación/validación, ganancia frente al baseline 0%, GMP, PAPR, pruning y máscara.
 
 La columna `GainNMSE_Test_vs_Baseline_dB` se calcula como `NMSE_baseline - NMSE_actual`; por tanto, valores positivos indican mejora de NMSE TEST respecto al baseline sin pruning.
+
+Los summaries incluyen métricas RF cuando están habilitadas en `cfg.metrics`: EVM TRAIN+VAL/TEST y ACPR/ACLR TEST de señal predicha y referencia. El EVM actual es RMS complejo en dominio temporal, opcionalmente con normalización de potencia mediante `cfg.metrics.evm.normalizePower`; no es todavía EVM OFDM/5G NR demodulado. ACPR usa una estimación Welch promediada sobre toda la señal finita y no inventa ancho de canal: `cfg.metrics.acpr.channelBandwidthHz` debe configurarse según la señal bajo estudio, o bien fijar explícitamente `mainChannelBandwidthHz`, `adjacentBandwidthHz` y `adjacentSpacingHz`. Si falta configuración válida, ACPR queda como `NaN` con estado/mensaje. Las columnas compactas ACPR son los cuatro canales adyacentes de la predicción TEST: izquierda/derecha 1 e izquierda/derecha 2.
 
 La tabla visual reducida para informes o presentaciones es opcional y se controla con `cfg.sweep.exportFigure`:
 

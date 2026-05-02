@@ -1138,6 +1138,36 @@ Cambios realizados:
 
 ---
 
+### 2026-05-02 — Métricas RF EVM y ACPR en reporting
+
+Objetivo:
+- Añadir métricas RF orientadas a DPD en `performance_summary` sin cambiar entrenamiento, pruning, mapping ni semántica X/Y.
+
+Cambios realizados:
+- Se añadió `cfg.metrics` con EVM habilitado y ACPR configurable por ancho de canal.
+- Se crearon `toolbox/metrics/computeEVM.m` y `toolbox/metrics/computeACPR.m`.
+- `train_PNNN_offline.m` calcula EVM TRAIN+VAL/TEST y ACPR TEST para predicción y referencia después de generar predicciones.
+- La tabla larga añade columnas EVM/ACPR y la tabla compacta añade EVM TEST y ACPR L1/R1/L2/R2 de la predicción TEST.
+- Si ACPR no tiene ancho de canal válido, queda como `NaN` con estado/mensaje en vez de inventar configuración.
+- No se ejecutaron entrenamientos, inferencias ni sweeps.
+
+---
+
+### 2026-05-02 — Ajuste ACPR Welch y EVM temporal
+
+Objetivo:
+- Alinear el cálculo ACPR con la lógica de referencia del tutor: potencia central y adyacente integrada sobre una estimación espectral promediada.
+
+Cambios realizados:
+- `computeACPR.m` deja de usar solo las primeras `nfft` muestras y ahora promedia periodogramas tipo Welch con ventana configurable y 50% de solape sobre todas las muestras finitas.
+- ACPR mantiene la convención `P_adjacent_dB - P_main_dB`, con bandas central, adyacente izquierda/derecha 1 y adyacente izquierda/derecha 2 configurables.
+- `computeEVM.m` usa RMS complejo explícito `sqrt(mean(abs(x).^2))`.
+- Se añadió `cfg.metrics.evm.normalizePower` para permitir normalización de potencia de la predicción antes del EVM temporal, sin afectar NMSE.
+- No se implementó todavía EVM OFDM/5G NR demodulado ni lógica NPRB/mu/Nslots.
+- No se ejecutaron entrenamientos, inferencias ni sweeps.
+
+---
+
 ## Plantilla para futuras entradas
 
 Copiar y rellenar esta plantilla después de cada intervención relevante:

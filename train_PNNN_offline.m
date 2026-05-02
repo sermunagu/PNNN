@@ -315,6 +315,21 @@ PAPR_trainVal_ref = PAPR(ref_trainVal);
 PAPR_test_NN      = PAPR(est_test);
 PAPR_test_ref     = PAPR(ref_test);
 
+if cfg.metrics.evm.enabled
+    evm_trainVal = computeEVM(ref_trainVal, est_trainVal, ...
+        cfg.metrics.evm.normalizePower);
+    evm_test = computeEVM(ref_test, est_test, ...
+        cfg.metrics.evm.normalizePower);
+else
+    evm_trainVal = emptyEVMMetric();
+    evm_test = emptyEVMMetric();
+end
+
+acpr_test_pred = computeACPR(est_test, fsUsed, cfg.metrics.acpr);
+acpr_test_ref = computeACPR(ref_test, fsUsed, cfg.metrics.acpr);
+reportACPRStatus("pred TEST", acpr_test_pred, cfg.metrics.acpr);
+reportACPRStatus("ref TEST", acpr_test_ref, cfg.metrics.acpr);
+
 fprintf("\nNMSE identificación (TRAIN+VAL) = %.2f dB\n", NMSE_trainVal);
 fprintf("NMSE validación (TEST)          = %.2f dB\n", NMSE_test);
 
@@ -382,6 +397,34 @@ metadata.PAPR_trainVal_NN = PAPR_trainVal_NN;
 metadata.PAPR_trainVal_ref = PAPR_trainVal_ref;
 metadata.PAPR_test_NN = PAPR_test_NN;
 metadata.PAPR_test_ref = PAPR_test_ref;
+metadata.EVM_trainVal_rms = evm_trainVal.evmRms;
+metadata.EVM_trainVal_pct = evm_trainVal.evmPercent;
+metadata.EVM_trainVal_dB = evm_trainVal.evmDb;
+metadata.EVM_test_rms = evm_test.evmRms;
+metadata.EVM_test_pct = evm_test.evmPercent;
+metadata.EVM_test_dB = evm_test.evmDb;
+metadata.EVM_timeDomain = true;
+metadata.EVM_normalizePower = cfg.metrics.evm.normalizePower;
+metadata.ACPR_test_pred_left1_dB = acpr_test_pred.acprLeft1_dB;
+metadata.ACPR_test_pred_right1_dB = acpr_test_pred.acprRight1_dB;
+metadata.ACPR_test_pred_left2_dB = acpr_test_pred.acprLeft2_dB;
+metadata.ACPR_test_pred_right2_dB = acpr_test_pred.acprRight2_dB;
+metadata.ACPR_test_pred_mainPower_dB = acpr_test_pred.mainPower_dB;
+metadata.ACPR_test_pred_status = acpr_test_pred.status;
+metadata.ACPR_test_pred_message = acpr_test_pred.message;
+metadata.ACPR_test_ref_left1_dB = acpr_test_ref.acprLeft1_dB;
+metadata.ACPR_test_ref_right1_dB = acpr_test_ref.acprRight1_dB;
+metadata.ACPR_test_ref_left2_dB = acpr_test_ref.acprLeft2_dB;
+metadata.ACPR_test_ref_right2_dB = acpr_test_ref.acprRight2_dB;
+metadata.ACPR_test_ref_mainPower_dB = acpr_test_ref.mainPower_dB;
+metadata.ACPR_test_ref_status = acpr_test_ref.status;
+metadata.ACPR_test_ref_message = acpr_test_ref.message;
+metadata.ACPR_channelBandwidthHz = cfg.metrics.acpr.channelBandwidthHz;
+metadata.ACPR_mainChannelBandwidthHz = cfg.metrics.acpr.mainChannelBandwidthHz;
+metadata.ACPR_adjacentBandwidthHz = cfg.metrics.acpr.adjacentBandwidthHz;
+metadata.ACPR_adjacentSpacingHz = cfg.metrics.acpr.adjacentSpacingHz;
+metadata.ACPR_nfft = cfg.metrics.acpr.nfft;
+metadata.ACPR_centerFrequencyHz = cfg.metrics.acpr.centerFrequencyHz;
 metadata.pruning = pruningStats;
 metadata.pruning_enabled = pruningStats.enabled;
 metadata.pruning_sparsityTarget = pruningStats.sparsityTarget;
@@ -464,6 +507,9 @@ finalSummary.PAPR_trainVal_NN = PAPR_trainVal_NN;
 finalSummary.PAPR_trainVal_ref = PAPR_trainVal_ref;
 finalSummary.PAPR_test_NN = PAPR_test_NN;
 finalSummary.PAPR_test_ref = PAPR_test_ref;
+finalSummary.EVM_test_pct = evm_test.evmPercent;
+finalSummary.EVM_test_dB = evm_test.evmDb;
+finalSummary.ACPR_test_pred = acpr_test_pred;
 finalSummary.pruningStats = pruningStats;
 finalSummary.pruningFineTuneInfo = pruningFineTuneInfo;
 finalSummary.NMSE_val_GMP = NMSE_val_GMP;
@@ -484,6 +530,23 @@ finalSummary.performanceCompactDisplayCsvFile = performanceCompactDisplayCsvFile
 printFinalPNNNSummary(finalSummary);
 
 %% ======================= FUNCIONES LOCALES =======================
+function evm = emptyEVMMetric()
+evm = struct('evmRms', NaN, 'evmPercent', NaN, 'evmDb', NaN, ...
+    'normalizePower', false);
+end
+
+function reportACPRStatus(label, acpr, acprCfg)
+if isfield(acprCfg, 'enabled') && ~logical(acprCfg.enabled)
+    return;
+end
+if ~isfield(acpr, 'status') || strcmp(string(acpr.status), "OK")
+    return;
+end
+warning('train_PNNN_offline:ACPRMetric', ...
+    'ACPR %s status=%s: %s', char(string(label)), ...
+    char(string(acpr.status)), char(string(acpr.message)));
+end
+
 function layers = buildLayers(inputDim, numNeurons, actType)
 layers = [
     featureInputLayer(inputDim, Name="input")

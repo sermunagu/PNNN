@@ -8,7 +8,8 @@ function [displayCells, displayLines] = pnnnPerformanceDisplayTable(performanceI
 compactTable = pnnnPerformanceCompactTable(performanceInput);
 headers = {'Measurement', 'Sparsity', 'NMSE Ident. (Train+Val)', ...
     'NMSE Valid. (Test)', 'Gain vs 0%', 'Gain vs GMP', 'PAPR Test', ...
-    'Pruned', 'Remaining', 'Mask'};
+    'EVM Test (dB)', 'EVM Test (%)', 'ACPR L2', 'ACPR L1', ...
+    'ACPR R1', 'ACPR R2', 'Pruned', 'Remaining', 'Mask'};
 
 displayCells = [headers; table2cell(compactTable)];
 displayLines = displayCellsToTextLines(displayCells);

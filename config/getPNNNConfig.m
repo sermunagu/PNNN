@@ -65,6 +65,22 @@ cfg.training.executionEnvironment = "auto";
 cfg.runtime = struct();
 cfg.runtime.clearCommandWindow = true;
 
+cfg.metrics = struct();
+cfg.metrics.evm = struct();
+cfg.metrics.evm.enabled = true;
+cfg.metrics.evm.normalizePower = false;        % Time-domain EVM; not OFDM-demodulated NR EVM.
+
+cfg.metrics.acpr = struct();
+cfg.metrics.acpr.enabled = true;
+cfg.metrics.acpr.channelBandwidthHz = [];      % Signal/channel bandwidth; configure for meaningful ACPR.
+cfg.metrics.acpr.mainChannelBandwidthHz = [];  % Main band width; empty uses channelBandwidthHz.
+cfg.metrics.acpr.adjacentBandwidthHz = [];     % Adjacent band width; empty uses channelBandwidthHz.
+cfg.metrics.acpr.adjacentSpacingHz = [];       % Adjacent centers at +/- spacing and +/- 2*spacing.
+cfg.metrics.acpr.nfft = 16384;
+cfg.metrics.acpr.window = "hann";
+cfg.metrics.acpr.centerFrequencyHz = 0;        % Main channel center frequency in baseband Hz.
+cfg.metrics.acpr.outOfBandPolicy = "nan";
+
 cfg.pruning = struct();
 cfg.pruning.enabled = true;
 cfg.pruning.sparsity = 0.3;
