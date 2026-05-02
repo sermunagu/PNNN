@@ -146,15 +146,15 @@ cfg.online.outputSuffix = "_pnnn_output";
 cfg.online.primaryOutputField = "yhat";
 
 cfg.warmStart = struct();
-cfg.warmStart.enabled = false;
+cfg.warmStart.enabled = true;
 cfg.warmStart.sourceFile = "";
 cfg.warmStart.sourceType = "auto";
-cfg.warmStart.useLatestDeploy = false;
+cfg.warmStart.useLatestDeploy = true;
 cfg.warmStart.reuseNormStats = true;
 cfg.warmStart.requireCompatibility = true;
 cfg.warmStart.skipInitialTraining = false; % false: reentrenar modelo rapidamente
                                            % true: cargo modelo denso y aplico sparsidad y fine_tune
-cfg.warmStart.maxEpochsOverride = [];
+cfg.warmStart.maxEpochsOverride = 30;
 
 cfg.sweep = struct();
 cfg.sweep.sparsityList = [0 0.3 0.5 0.6 0.7 0.8 0.9];
