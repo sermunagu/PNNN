@@ -1168,6 +1168,16 @@ Cambios realizados:
 
 ---
 
+### 2026-05-03 — Documentación del sweep N25 ELU con pruning global
+
+Cambios realizados:
+- Se documentó el sweep `results/pruning_sweeps/20260503_0013` en `docs/EXPERIMENTS_LOG.md` y `docs/RESULTS_INDEX.md`.
+- Se registraron configuración, tabla compacta, candidatos recomendados (`30%`, `50%`, `60%`), limitaciones de ACPR y lectura correcta de EVM temporal.
+- No se modificó código MATLAB ni artefactos de `measurements/`, `results/`, `generated_outputs/`, `.mat`, `.fig` o `deploy_package.mat`.
+- No se ejecutaron entrenamientos, inferencias ni sweeps.
+
+---
+
 ## Plantilla para futuras entradas
 
 Copiar y rellenar esta plantilla después de cada intervención relevante:

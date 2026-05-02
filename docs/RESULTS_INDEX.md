@@ -22,12 +22,65 @@ Este fichero sirve para localizar rápidamente:
 | 2026-04-28 | `experiment20260428T170911_xy` | PNNN / NN_DPD phase-normalized | `-38.20 dB` | `-38.19 dB` | `results/NN_DPD_xy_forward_M13O1357_N128_phaseNorm_full_elu_experiment20260428T170911_xy_20260428_offline/deploy_package.mat` | `generated_outputs/experiment20260428T170911_xy_nn_dpd_output.mat` | `yhat` |
 | 2026-04-29 | `experiment20260429T134032_xy` | PNNN phase-normalized, no pruning | `-38.509 dB` | `-38.5342 dB` | Not recorded in this entry | No inference output recorded | `yhat` when inference is run |
 | 2026-04-30 | `experiment20260429T134032_xy` | PNNN phase-normalized, global magnitude pruning 30% | `-38.62 dB` | `-38.61 dB` | `results/NN_DPD_xy_forward_M13O1357_N128_phaseNorm_full_elu_experiment20260429T134032_xy_20260430_offline/deploy_package.mat` | No inference output recorded | `yhat` when inference is run |
+| 2026-05-03 | `experiment20260429T134032_xy` | Important current result: N25 ELU global pruning sweep | Best `30%`: `-37.904 dB`; balanced `50%`: `-37.750 dB` | Best `30%`: `-37.905 dB`; balanced `50%`: `-37.744 dB` | Sweep folder: `results/pruning_sweeps/20260503_0013` | No inference output recorded | `yhat` when inference is run |
 
 ---
 
 ## Resultados asociados a `experiment20260429T134032_xy`
 
-### Common setup
+### Important current result: 2026-05-03 N25 ELU global pruning sweep
+
+- Sweep folder: `results/pruning_sweeps/20260503_0013`
+- Measurement source: `experiment20260429T134032`, ILC forward modeling.
+- `mappingMode = xy_forward`
+- `model = phaseNorm full`
+- `M = 13`
+- `orders = [1 3 5 7]`
+- `inputDim = 84`
+- `numNeurons = 25`
+- `actType = elu`
+- Split: train `70%`, val `15%`, test `15%`, `seed = 42`
+- Pruning method: global magnitude pruning, weights only.
+- Biases are not pruned.
+- Fine-tuning after pruning: `20` epochs.
+- Total podable weights: `2150`.
+- Warm start: disabled.
+- GMP references: VAL pinv `-36.47 dB`, VAL ridge `1e-4` `-36.18 dB`, justo TEST pinv `-36.65 dB`, justo TEST ridge `1e-4` `-36.45 dB`.
+
+| Sparsity | NMSE Train+Val dB | NMSE Test dB | Gain vs 0% dB | Gain vs GMP pinv dB | PAPR Test dB | EVM Test dB | EVM Test % | Pruned | Remaining | Mask |
+|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|
+| `0%` | `-37.836` | `-37.787` | `0` | `1.1319` | `14.124` | `-37.787` | `1.2902` | `0` | `2150` | `N/A` |
+| `30%` | `-37.904` | `-37.905` | `0.11792` | `1.2498` | `14.170` | `-37.905` | `1.2728` | `645` | `1505` | `OK` |
+| `50%` | `-37.750` | `-37.744` | `-0.042423` | `1.0894` | `14.184` | `-37.744` | `1.2965` | `1075` | `1075` | `OK` |
+| `60%` | `-37.514` | `-37.520` | `-0.26663` | `0.86523` | `14.141` | `-37.520` | `1.3304` | `1290` | `860` | `OK` |
+| `70%` | `-37.037` | `-37.057` | `-0.73022` | `0.40164` | `14.250` | `-37.057` | `1.4034` | `1505` | `645` | `OK` |
+
+Recommended candidates:
+
+- Maximum NMSE performance: N25 ELU + `30%` global pruning (`-37.905 dB` TEST).
+- Main balanced candidate: N25 ELU + `50%` global pruning (`-37.744 dB` TEST, `1075` remaining podable weights).
+- Aggressive compression candidate: N25 ELU + `60%` global pruning (`-37.520 dB` TEST, `860` remaining podable weights).
+
+Interpretation:
+
+- The `30%` point slightly improves over the dense N25 model by about `+0.118 dB`; this should be stated cautiously as possible mild regularization in this sweep, not as a proven general effect.
+- The `50%` point has almost no degradation versus dense, about `-0.042 dB`, while halving podable weights.
+- The `60%` point remains useful and still beats GMP justo pinv by `+0.865 dB`.
+- The `70%` point remains above GMP but starts to degrade significantly versus dense.
+- All pruning masks reported `OK`; no mask integrity issue was observed in the sweep summary.
+
+Limitations:
+
+- ACPR columns are `N/A` because ACPR returned `INVALID_CONFIG`: channel bandwidth/spacing is not configured yet. This is expected and pending tutor input, not a failed experiment.
+- EVM currently means time-domain normalized EVM, so it is numerically equivalent or very close to NMSE in dB. Do not present it as demodulated 5G NR EVM.
+
+Conclusion:
+
+For the N25 ELU phase-normalized PNNN, global magnitude pruning remains effective up to `50%` sparsity with negligible NMSE degradation. The `30%` point achieves the best NMSE test result, while the `50%` point provides the most attractive complexity/performance compromise. ACPR remains pending because the channel bandwidth configuration is not yet available.
+
+---
+
+### Common setup for earlier N128 entries
 
 - `blockName = ILC_DPD`
 - `modelado = DPD`
