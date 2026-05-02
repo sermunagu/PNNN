@@ -19,6 +19,8 @@ compactTable.Measurement = tableColumnOrDefault(performanceTable, ...
     'Measurement', repmat("N/A", n, 1));
 compactTable.Sparsity = tableColumnFirstAvailable(performanceTable, ...
     {'SparsityTarget_pct', 'Sparsity'}, NaN(n, 1));
+compactTable.Sparsity = normalizeDisabledSparsity( ...
+    compactTable.Sparsity, performanceTable);
 compactTable.NMSE_Identificacion_dB = tableColumnFirstAvailable( ...
     performanceTable, {'NMSE_TrainVal_dB', 'NMSE_Identificacion_dB'}, ...
     NaN(n, 1));
@@ -45,7 +47,42 @@ compactTable.Remaining = tableColumnFirstAvailable(performanceTable, ...
     {'RemainingParams', 'Remaining'}, NaN(n, 1));
 compactTable.Mask = tableColumnFirstAvailable(performanceTable, ...
     {'MaskIntegrityStatus', 'Mask'}, repmat("N/A", n, 1));
+compactTable = normalizeDisabledPruningRows(compactTable, performanceTable);
 compactTable = repairBaselineRemaining(compactTable, performanceTable);
+end
+
+function sparsity = normalizeDisabledSparsity(sparsity, performanceTable)
+disabledRows = disabledPruningRows(performanceTable);
+if any(disabledRows)
+    sparsity(disabledRows) = 0;
+end
+end
+
+function compactTable = normalizeDisabledPruningRows(compactTable, performanceTable)
+disabledRows = disabledPruningRows(performanceTable);
+if ~any(disabledRows)
+    return;
+end
+
+compactTable.Sparsity(disabledRows) = 0;
+compactTable.Pruned(disabledRows) = 0;
+compactTable.Remaining(disabledRows) = NaN;
+compactTable.Mask(disabledRows) = "N/A";
+end
+
+function disabledRows = disabledPruningRows(performanceTable)
+n = height(performanceTable);
+disabledRows = false(n, 1);
+if ~any(strcmp(performanceTable.Properties.VariableNames, 'PruningEnabled'))
+    return;
+end
+
+pruningEnabled = performanceTable.PruningEnabled;
+if islogical(pruningEnabled) || isnumeric(pruningEnabled)
+    disabledRows = ~logical(pruningEnabled);
+else
+    disabledRows = strcmpi(string(pruningEnabled), "false");
+end
 end
 
 function values = tableColumnOrDefault(summaryTable, columnName, defaultValues)

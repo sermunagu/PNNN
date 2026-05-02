@@ -130,18 +130,28 @@ for i = 1:n
     PruningScope(i) = stringField(p, 'pruningScope', "");
     PruningIncludeBias(i) = logicalField(p, 'pruningIncludeBias', false);
     PruningFreezePruned(i) = logicalField(p, 'pruningFreezePruned', false);
-    SparsityTarget_pct(i) = 100 * numericField(p, 'sparsityTarget', NaN);
-    SparsityActual_pct(i) = 100 * numericField(p, 'sparsityActual', NaN);
     TotalPodableParams(i) = totalPodableParams;
-    if ~pruningEnabled && isfinite(totalPodableParams)
+    if ~pruningEnabled
+        SparsityTarget_pct(i) = 0;
+        SparsityActual_pct(i) = 0;
         PrunedParams(i) = 0;
-        RemainingParams(i) = totalPodableParams;
+        if isfinite(totalPodableParams)
+            RemainingParams(i) = totalPodableParams;
+        else
+            RemainingParams(i) = NaN;
+        end
     else
+        SparsityTarget_pct(i) = 100 * numericField(p, 'sparsityTarget', NaN);
+        SparsityActual_pct(i) = 100 * numericField(p, 'sparsityActual', NaN);
         PrunedParams(i) = numericField(p, 'prunedParams', NaN);
         RemainingParams(i) = numericField(p, 'remainingParams', NaN);
     end
     MaskIntegrityOK(i) = logicalField(p, 'maskIntegrityOK', false);
     MaskIntegrityStatus(i) = stringField(p, 'maskIntegrityStatus', "UNKNOWN");
+    if ~pruningEnabled && (strlength(MaskIntegrityStatus(i)) == 0 || ...
+            strcmpi(MaskIntegrityStatus(i), "UNKNOWN"))
+        MaskIntegrityStatus(i) = "N/A";
+    end
     MaskViolationCount(i) = numericField(p, 'maskViolationCount', NaN);
     MaskViolationMaxAbs(i) = numericField(p, 'maskViolationMaxAbs', NaN);
     if pruningEnabled

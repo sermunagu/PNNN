@@ -1125,6 +1125,19 @@ Cambios realizados:
 
 ---
 
+### 2026-05-02 — Reporting limpio para runs sin pruning
+
+Objetivo:
+- Evitar que las tablas de performance muestren una sparsity activa cuando `pruning.enabled=false`.
+
+Cambios realizados:
+- La tabla larga normaliza `SparsityTarget_pct` y `SparsityActual_pct` a `0` en runs sin pruning.
+- En runs sin pruning, `PrunedParams` se muestra como `0`, `RemainingParams` usa `TotalPodableParams` si está disponible y `MaskIntegrityStatus` queda como `N/A` cuando no hay máscara aplicable.
+- La tabla compacta fuerza `Sparsity=0`, `Pruned=0` y `Mask=N/A` cuando `PruningEnabled=false`, incluso si recibe una tabla larga antigua con sparsity heredada de configuración.
+- No se cambió metadata almacenada, entrenamiento, inferencia, pruning, mapping, split, GMP, arquitectura ni semántica X/Y.
+
+---
+
 ## Plantilla para futuras entradas
 
 Copiar y rellenar esta plantilla después de cada intervención relevante:
