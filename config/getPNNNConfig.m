@@ -40,7 +40,7 @@ cfg.model = struct();
 cfg.model.M = 13;
 cfg.model.orders = [1 3 5 7];
 cfg.model.featMode = 'full';
-cfg.model.numNeurons = [128];
+cfg.model.numNeurons = [25];
 cfg.model.actType = 'elu';
 cfg.model.temporalExtension = 'periodic';
 cfg.model.removeDC = true;
@@ -83,7 +83,7 @@ cfg.metrics.acpr.outOfBandPolicy = "nan";
 
 cfg.pruning = struct();
 cfg.pruning.enabled = true;
-cfg.pruning.sparsity = 0.3;
+cfg.pruning.sparsity = 0.5;
 cfg.pruning.scope = "global";
 cfg.pruning.includeBias = false;
 cfg.pruning.fineTuneEnabled = true;
@@ -162,7 +162,7 @@ cfg.online.outputSuffix = "_pnnn_output";
 cfg.online.primaryOutputField = "yhat";
 
 cfg.warmStart = struct();
-cfg.warmStart.enabled = true;
+cfg.warmStart.enabled = false;
 cfg.warmStart.sourceFile = "";
 cfg.warmStart.sourceType = "auto";
 cfg.warmStart.useLatestDeploy = true;
@@ -173,7 +173,7 @@ cfg.warmStart.skipInitialTraining = false; % false: reentrenar modelo rapidament
 cfg.warmStart.maxEpochsOverride = 30;
 
 cfg.sweep = struct();
-cfg.sweep.sparsityList = [0 0.3 0.5 0.6 0.7 0.8 0.9];
+cfg.sweep.sparsityList = [0 0.3 0.5 0.6 0.7];
 cfg.sweep.fineTuneEpochs = cfg.pruning.fineTuneEpochs;
 cfg.sweep.includeBias = cfg.pruning.includeBias;
 cfg.sweep.freezePruned = cfg.pruning.freezePruned;

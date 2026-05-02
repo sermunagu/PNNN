@@ -18,7 +18,7 @@ if isfield(baseCfg, 'sweep') && isfield(baseCfg.sweep, 'sparsityList') && ...
         ~isempty(baseCfg.sweep.sparsityList)
     sparsityList = double(baseCfg.sweep.sparsityList(:)).';
 else
-    sparsityList = [0 0.3];
+    sparsityList = [0 0.6];
 end
 fineTuneEpochs = baseCfg.sweep.fineTuneEpochs;
 

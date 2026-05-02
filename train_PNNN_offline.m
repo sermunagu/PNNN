@@ -33,7 +33,7 @@ cfg.warmStart = validateWarmStartConfig(cfg.warmStart);
 [warmStartState, cfg] = resolveWarmStartState(cfg);
 
 %% ======================= TAGS DE EXPERIMENTO =======================
-dateTag  = string(datestr(now, cfg.output.dateFormat));
+dateTag = string(datetime("now", "Format", cfg.output.dateFormat));
 memTag   = "M" + string(cfg.model.M);
 ordTag   = "O" + join(string(cfg.model.orders), "");
 archTag  = "N" + strjoin(string(cfg.model.numNeurons), "x");
