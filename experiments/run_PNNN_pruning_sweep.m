@@ -29,7 +29,7 @@ pruningScope = baseCfg.sweep.pruningScope;
 measurementName = baseCfg.data.measurementName;
 sweepOutputRoot = baseCfg.sweep.outputRoot;
 
-timestamp = char(datetime('now', 'Format', 'yyyyMMdd_HHmmss'));
+timestamp = char(datetime('now', 'Format', 'yyyyMMdd_HHmm'));
 sweepFolder = fullfile(sweepOutputRoot, timestamp);
 if ~exist(sweepFolder, 'dir')
     mkdir(sweepFolder);

@@ -54,7 +54,7 @@ cfg.training.learnRateSchedule = "piecewise";
 cfg.training.learnRateDropPeriod = 5;
 cfg.training.learnRateDropFactor = 0.95;
 cfg.training.validationPatience = 100;
-cfg.training.trainingPlots = 'training-progress';
+cfg.training.trainingPlots = 'none'; % 'training-progress' o 'none'
 cfg.training.verbose = true;
 cfg.training.shuffle = "every-epoch";
 cfg.training.outputNetwork = "best-validation-loss";
@@ -108,7 +108,7 @@ cfg.output = struct();
 cfg.output.experimentPrefix = "NN";
 cfg.output.modelFamilyTag = "phaseNorm";
 cfg.output.experimentSuffix = "offline";
-cfg.output.dateFormat = 'yyyymmdd';
+cfg.output.dateFormat = 'yyyyMMdd_HHmm';
 cfg.output.modelFileName = "model.mat";
 cfg.output.predictionsFileName = "predictions.mat";
 cfg.output.metadataFileName = "metadata.txt";
@@ -127,9 +127,7 @@ cfg.output.sweepSummaryCompactCsvFileName = "sweep_summary_compact.csv";
 cfg.output.sweepSummaryCompactDisplayCsvFileName = "sweep_summary_compact_display.csv";
 cfg.output.sweepSummaryCompactXlsxFileName = "sweep_summary_compact.xlsx";
 cfg.output.sweepSummaryTableBaseName = "sweep_summary_table";
-cfg.output.deployPackage = ""; % Coge el último temporalmente
-% Para coger uno en concreto
-%cfg.output.deployPackage = "C:\Sergi\Investigacion\Códigos\NN\PNNN\results\...\deploy_package.mat";
+cfg.output.deployPackage = ""; 
 cfg.output.onlineOutputFileSuffix = '_pnnn_output.mat';
 cfg.output.saveMetadata = true;
 cfg.output.primaryOutputField = 'yhat';
@@ -139,14 +137,16 @@ cfg.output.skipIfExists = false;
 
 cfg.online = struct();
 cfg.online.useLatestDeploy = true;
-cfg.online.deployPackage = "";
+cfg.online.deployPackage = ""; % Coge el último temporalmente
+% Para coger uno en concreto
+%cfg.output.deployPackage = "C:\Sergi\Investigacion\Códigos\NN\PNNN\results\...\deploy_package.mat";
 cfg.online.inputFile = "";
 cfg.online.outputDir = cfg.paths.generatedOutputsDir;
 cfg.online.outputSuffix = "_pnnn_output";
 cfg.online.primaryOutputField = "yhat";
 
 cfg.sweep = struct();
-cfg.sweep.sparsityList = [0 0.3];
+cfg.sweep.sparsityList = [0 0.1 0.2 0.3 0.4 0.5 0.6];
 cfg.sweep.fineTuneEpochs = cfg.pruning.fineTuneEpochs;
 cfg.sweep.includeBias = cfg.pruning.includeBias;
 cfg.sweep.freezePruned = cfg.pruning.freezePruned;
