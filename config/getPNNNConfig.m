@@ -173,7 +173,7 @@ cfg.warmStart.skipInitialTraining = false; % false: reentrenar modelo rapidament
                                            % true: cargo modelo denso y aplico sparsidad y fine_tune
 
 cfg.sweep = struct();
-cfg.sweep.sparsityList = [0, 0.3, 0.5, 0.6];
+cfg.sweep.sparsityList = [0, 0.3 0.4 0.5 0.6];
 cfg.sweep.fineTuneEpochs = cfg.pruning.fineTuneEpochs;
 cfg.sweep.includeBias = cfg.pruning.includeBias;
 cfg.sweep.freezePruned = cfg.pruning.freezePruned;
