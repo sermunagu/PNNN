@@ -34,7 +34,7 @@ cfg.split.method = 'stratified_by_amplitude';
 cfg.split.trainRatio = 0.70;
 cfg.split.valRatio = 0.15;
 cfg.split.testRatio = 0.15;
-cfg.split.seed = 45;
+cfg.split.seed = 42;
 
 cfg.model = struct();
 cfg.model.M = 13;
