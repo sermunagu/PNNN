@@ -140,7 +140,7 @@ Después:
 
 ---
 
-## Sweep de pruning dense-first
+## Sweep de pruning dense-first one-shot
 
 Solo Sergi, salvo permiso explícito:
 
@@ -156,6 +156,57 @@ Uso previsto:
 - fuerza `skipInitialTraining=true` en las corridas podadas, de modo que solo aplican pruning y fine-tuning desde el denso común.
 
 Usar este script cuando se quiera comparar sparsities podadas contra una misma red densa generada dentro del propio sweep, evitando que una corrida podada pueda arrancar accidentalmente desde el deploy de otra corrida podada.
+
+---
+
+## Sweep de pruning dense-first iterativo
+
+Solo Sergi, salvo permiso explícito:
+
+```powershell
+matlab -batch "run('experiments/run_PNNN_iterative_pruning_sweep_from_dense_first.m')"
+```
+
+Uso previsto:
+
+- entrena primero `sparsity_000` dentro del mismo sweep;
+- construye una sola cadena monotona desde el denso hasta la mayor sparsity pedida en `cfg.sweep.sparsityList`;
+- cada paso usa como warm start el `deploy_package.mat` del paso anterior, con `useLatestDeploy=false` y `skipInitialTraining=true`;
+- los pasos intermedios quedan guardados como `iterative_step_XXX` para trazabilidad;
+- el resumen global del sweep guarda el denso y solo los checkpoints pedidos en `cfg.sweep.sparsityList`, no todos los pasos intermedios.
+
+Usar este script cuando se quiera probar si llegar a una sparsity por pasos graduales es mas estable que aplicar la sparsity final de una sola vez.
+
+Nota de resultados actuales:
+
+- El sweep global iterativo es actualmente la mejor estrategia de pruning documentada.
+- El punto `40%` intermedio fue el mejor observado en NMSE TEST, por lo que conviene añadir `40%` a `cfg.sweep.sparsityList` en la próxima corrida de confirmación si se quiere que aparezca como checkpoint oficial.
+- Esta es una recomendación operativa; no cambiar `cfg.sweep.sparsityList` sin decidir antes la corrida que se quiere lanzar.
+
+---
+
+## Sweep de pruning dense-first layer-wise
+
+Solo Sergi, salvo permiso explícito:
+
+```powershell
+matlab -batch "run('experiments/run_PNNN_layerwise_pruning_sweep_from_dense_first.m')"
+```
+
+Uso previsto:
+
+- entrena primero `sparsity_000` dentro del mismo sweep;
+- usa el deploy denso exacto como warm start fijo para cada sparsity podada;
+- fuerza `cfg.pruning.scope="layerwise"` en las corridas podadas;
+- poda la fraccion solicitada independientemente dentro de cada tensor podable;
+- mantiene protegidos los bias si `includeBias=false`.
+
+Usar este script para comparar pruning global frente a pruning layer-wise con la misma logica dense-first.
+
+Nota de resultados actuales:
+
+- La corrida layer-wise dense-first no queda seleccionada como candidata principal en su forma actual.
+- Degrada más que global iterativo, especialmente en `50%` y `60%`.
 
 ---
 

@@ -1,8 +1,10 @@
 function [pruningState, stats] = createMagnitudePruningMasks(net, pruningCfg)
-% createMagnitudePruningMasks - Build global magnitude pruning masks.
+% createMagnitudePruningMasks - Build magnitude pruning masks.
 %
 % This function ranks podable learnable parameters by absolute value and
 % creates binary masks for the requested sparsity before PNNN fine-tuning.
+% The default global scope ranks all podable weights together; layerwise
+% scope applies the requested sparsity independently inside each tensor.
 %
 % Inputs:
 %   net - Trained dlnetwork returned by trainnet.
@@ -47,8 +49,41 @@ if stats.totalPodableParams == 0
     error("No se encontraron parametros podables para pruning.");
 end
 
-numToPrune = floor(pruningCfg.sparsity * stats.totalPodableParams);
-pruneFlags = false(stats.totalPodableParams, 1);
+scope = string(pruningCfg.scope);
+if scope == "layerwise"
+    [masks, parameterNames, parameterTotal, parameterPruned] = ...
+        createLayerwiseMasks(masks, candidates, learnables, pruningCfg.sparsity);
+else
+    [masks, parameterNames, parameterTotal, parameterPruned] = ...
+        createGlobalMasks(masks, candidates, allMagnitudes, pruningCfg.sparsity);
+end
+
+stats.numPrunedParams = sum(parameterPruned);
+stats.numRemainingParams = stats.totalPodableParams - stats.numPrunedParams;
+stats.sparsityActual = stats.numPrunedParams / max(stats.totalPodableParams, 1);
+stats.parameterNames = parameterNames;
+stats.parameterTotal = parameterTotal;
+stats.parameterPruned = parameterPruned;
+stats.parameterRemaining = parameterTotal - parameterPruned;
+
+pruningState = struct();
+pruningState.masks = masks;
+pruningState.parameterNames = parameterNames;
+pruningState.parameterTotal = parameterTotal;
+pruningState.parameterPruned = parameterPruned;
+pruningState.includeBias = pruningCfg.includeBias;
+pruningState.scope = char(scope);
+
+fprintf("Pruning scope : %s\n", char(scope));
+fprintf("Pruning target: %.2f %%\n", 100*stats.sparsityTarget);
+fprintf("Pruning actual: %.2f %% (%d/%d parametros podables)\n", ...
+    100*stats.sparsityActual, stats.numPrunedParams, stats.totalPodableParams);
+end
+
+function [masks, parameterNames, parameterTotal, parameterPruned] = ...
+    createGlobalMasks(masks, candidates, allMagnitudes, sparsity)
+numToPrune = floor(sparsity * numel(allMagnitudes));
+pruneFlags = false(numel(allMagnitudes), 1);
 if numToPrune > 0
     [~, order] = sort(allMagnitudes, "ascend");
     pruneFlags(order(1:numToPrune)) = true;
@@ -69,26 +104,32 @@ for i = 1:numel(candidates)
     parameterPruned(i) = nnz(~keepMask);
     offset = offset + candidates(i).numel;
 end
+end
 
-stats.numPrunedParams = nnz(pruneFlags);
-stats.numRemainingParams = stats.totalPodableParams - stats.numPrunedParams;
-stats.sparsityActual = stats.numPrunedParams / max(stats.totalPodableParams, 1);
-stats.parameterNames = parameterNames;
-stats.parameterTotal = parameterTotal;
-stats.parameterPruned = parameterPruned;
-stats.parameterRemaining = parameterTotal - parameterPruned;
+function [masks, parameterNames, parameterTotal, parameterPruned] = ...
+    createLayerwiseMasks(masks, candidates, learnables, sparsity)
+parameterNames = strings(numel(candidates), 1);
+parameterTotal = zeros(numel(candidates), 1);
+parameterPruned = zeros(numel(candidates), 1);
 
-pruningState = struct();
-pruningState.masks = masks;
-pruningState.parameterNames = parameterNames;
-pruningState.parameterTotal = parameterTotal;
-pruningState.parameterPruned = parameterPruned;
-pruningState.includeBias = pruningCfg.includeBias;
-pruningState.scope = char(pruningCfg.scope);
+for i = 1:numel(candidates)
+    row = candidates(i).row;
+    data = learnableToNumeric(learnables.Value{row});
+    magnitudes = abs(data(:));
+    numToPrune = floor(sparsity * numel(magnitudes));
+    pruneFlags = false(numel(magnitudes), 1);
+    if numToPrune > 0
+        [~, order] = sort(magnitudes, "ascend");
+        pruneFlags(order(1:numToPrune)) = true;
+    end
 
-fprintf("Pruning target: %.2f %%\n", 100*stats.sparsityTarget);
-fprintf("Pruning actual: %.2f %% (%d/%d parametros podables)\n", ...
-    100*stats.sparsityActual, stats.numPrunedParams, stats.totalPodableParams);
+    keepMask = reshape(~pruneFlags, candidates(i).size);
+    masks{row} = keepMask;
+
+    parameterNames(i) = candidates(i).name;
+    parameterTotal(i) = candidates(i).numel;
+    parameterPruned(i) = nnz(~keepMask);
+end
 end
 
 function tf = isPodableParameter(parameterName, includeBias)

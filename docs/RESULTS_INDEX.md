@@ -27,10 +27,55 @@ Este fichero sirve para localizar rápidamente:
 | 2026-05-03 | `experiment20260429T134032_xy` | N25 ELU seed 45 pruning sweep, 150 initial epochs | Dense: `-37.815 dB`; `30%`: `-37.776 dB`; `50%`: `-37.592 dB` | Dense: `-37.714 dB`; `30%`: `-37.684 dB`; `50%`: `-37.524 dB` | Sweep folder: `results/pruning_sweeps/20260503_0300` | No inference output recorded | `yhat` when inference is run |
 | 2026-05-03 | `experiment20260429T134032_xy` | N25 50% pruning activation sweep | Best activation ELU: `-37.616 dB`; leakyReLU: `-37.141 dB`; sigmoid: `-37.049 dB`; tanh: `-36.994 dB` | Best activation ELU: `-37.533 dB`; leakyReLU: `-37.062 dB`; sigmoid: `-37.031 dB`; tanh: `-36.901 dB` | Sweep folder: `results/activation_sweeps/20260503_0328` | No inference output recorded | `yhat` when inference is run |
 | 2026-05-03 | `experiment20260429T134032_xy` | N25 ELU dense-first pruning sweep | Dense: `-37.737 dB`; `30%`: `-37.770 dB`; `50%`: `-37.501 dB`; `60%`: `-37.183 dB` | Dense: `-37.646 dB`; best `30%`: `-37.679 dB`; `50%`: `-37.411 dB`; `60%`: `-37.098 dB` | Sweep folder: `results/pruning_sweeps/20260503_1105`; dense deploy source in `sparsity_000` | No inference output recorded | `yhat` when inference is run |
+| 2026-05-03 | `experiment20260429T134032_xy` | Current best pruning strategy: N25 ELU global iterative pruning | Dense: not provided; checkpoints documented by TEST only | Dense: `≈ -37.646 dB`; `30%`: `≈ -37.941 dB`; `40%` intermediate: `≈ -37.959 dB`; `50%`: `≈ -37.850 dB`; `60%`: `≈ -37.687 dB` | Local generated sweep summaries under `results/`; artifacts not versioned | No inference output recorded | `yhat` when inference is run |
+| 2026-05-03 | `experiment20260429T134032_xy` | N25 ELU layer-wise dense-first pruning sweep | Dense: not provided; documented by TEST only | Dense: `≈ -37.646 dB`; `30%`: `≈ -37.580 dB`; `50%`: `≈ -37.142 dB`; `60%`: `≈ -35.822 dB` | Local generated sweep summaries under `results/`; artifacts not versioned | No inference output recorded | `yhat` when inference is run |
 
 ---
 
 ## Resultados asociados a `experiment20260429T134032_xy`
+
+### 2026-05-03 Current pruning comparison: global iterative vs layer-wise dense-first
+
+- Result source: local generated sweep summaries under `results/`; generated artifacts are not versioned and were not modified for this documentation update.
+- Exact result folders are not recorded in this entry because only consolidated numbers were provided for documentation.
+- Measurement: `experiment20260429T134032_xy`
+- `mappingMode = xy_forward`
+- Local X/Y convention applies: `X` is the input of the modeled block and `Y` is its output; `xy_forward` is not automatically PA-forward.
+- Model: PNNN `phaseNorm full`, N25, ELU.
+- `M = 13`
+- `orders = [1 3 5 7]`
+- ACPR remains `INVALID_CONFIG` pending channel bandwidth/spacing configuration.
+- EVM remains time-domain normalized EVM, not demodulated 5G NR EVM.
+
+Global iterative pruning:
+
+| Point | NMSE TEST |
+|---|---:|
+| Dense `0%` | `≈ -37.646 dB` |
+| `30%` | `≈ -37.941 dB` |
+| `40%` intermediate | `≈ -37.959 dB` |
+| `50%` | `≈ -37.850 dB` |
+| `60%` | `≈ -37.687 dB` |
+
+Layer-wise dense-first pruning:
+
+| Point | NMSE TEST |
+|---|---:|
+| Dense `0%` | `≈ -37.646 dB` |
+| `30%` | `≈ -37.580 dB` |
+| `50%` | `≈ -37.142 dB` |
+| `60%` | `≈ -35.822 dB` |
+
+Interpretation:
+
+- Global iterative pruning is currently the best pruning strategy documented for this N25 ELU configuration.
+- The best observed TEST NMSE is the global iterative `40%` intermediate point at approximately `-37.959 dB`.
+- Global iterative `30%` and `50%` are also strong, at approximately `-37.941 dB` and `-37.850 dB`.
+- Global iterative `60%` remains close to the dense baseline at approximately `-37.687 dB`.
+- Layer-wise dense-first pruning is not selected as the main candidate in its current form because it degrades more strongly, especially at `50%` and `60%`.
+- Recommended next confirmation run: add `40%` to the official iterative sparsity list so it is reported as a target checkpoint, not only as an intermediate step. This is a docs-only recommendation; `config/getPNNNConfig.m` was not changed for this recommendation.
+
+---
 
 ### 2026-05-03 N25 ELU dense-first pruning sweep
 

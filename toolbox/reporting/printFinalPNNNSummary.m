@@ -70,9 +70,14 @@ if ~enabled
     return;
 end
 
-method = 'global magnitude, weights only';
+scope = lower(string(getField(pruningStats, 'scope', "global")));
+if strlength(scope) == 0
+    scope = "global";
+end
+
+method = sprintf('%s magnitude, weights only', char(scope));
 if getField(pruningStats, 'includeBias', false)
-    method = 'global magnitude, weights and bias';
+    method = sprintf('%s magnitude, weights and bias', char(scope));
 end
 
 totalPodable = getField(pruningStats, 'totalPodableParams', NaN);

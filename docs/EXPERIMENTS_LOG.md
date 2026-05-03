@@ -35,12 +35,66 @@ Regla práctica: si una entrada no cabe razonablemente en una pantalla, debe res
 
 | Fecha | Medida | Experimento | Decisión / conclusión |
 |---|---|---|---|
+| 2026-05-03 | `experiment20260429T134032_xy` | Global iterative vs layer-wise dense-first pruning | Global iterative pruning is currently the best pruning strategy; layer-wise pruning is not selected because it degrades more strongly, especially at `50%`-`60%`. |
 | 2026-05-03 | `experiment20260429T134032_xy` | Dense-first N25 ELU pruning sweep | The dense-first flow works as intended; `30%` is the best TEST NMSE point in this sweep, `50%` is the stronger compression/performance trade-off, and `60%` remains above GMP justo pinv. |
 | 2026-05-03 | `experiment20260429T134032_xy` | Activation sweep al 50% pruning | Para esta medida/configuración, ELU es la mejor activación probada en el candidato N25 50% pruned; ACPR sigue inválido. |
 | 2026-05-03 | `experiment20260429T134032_xy` | N25 ELU seed 45, sweep rápido 150 épocas | Reproduce muy cerca el sweep de 300 épocas; la pérdida máxima es menor de `0.1 dB`, pero el entrenamiento terminó por `Max epochs completed`, no por early stopping. |
 | 2026-05-03 | `experiment20260429T134032_xy` | Estabilidad N25 ELU seed 45 | La seed 45 no confirma mejora NMSE por pruning; 30% y 50% mantienen degradación baja y siguen por encima de GMP justo pinv. |
 | 2026-05-03 | `experiment20260429T134032_xy` | Sweep N25 ELU con pruning global | Para N25 ELU, el 30% da el mejor NMSE TEST y el 50% es el mejor compromiso complejidad/rendimiento; ACPR queda pendiente por configuración de ancho de canal. |
 | 2026-04-29/30 | `experiment20260429T134032_xy` | Baseline PNNN vs pruning 30% | El pruning global al 30% no degrada; mejora muy ligeramente el NMSE TEST y mantiene ventaja clara frente a GMP. |
+
+---
+
+## 2026-05-03 — Global iterative vs layer-wise dense-first pruning
+
+**Measurement:** `experiment20260429T134032_xy`
+
+**Result source:** local generated sweep summaries under `results/`; those generated artifacts are not versioned in Git and were not modified for this documentation update. The exact result folders are not recorded in this entry because only the consolidated numbers were provided for documentation.
+
+**Purpose:** compare the new dense-first pruning strategies after the global iterative sweep produced strong results and the layer-wise dense-first sweep completed.
+
+**Common setup:** N25 ELU PNNN with phase-normalized `full` features, `M = 13`, `orders = [1 3 5 7]`, `mappingMode = xy_forward`, and the local PNNN X/Y convention. `xy_forward` must not be reinterpreted automatically as physical PA-forward modeling.
+
+**Global iterative pruning results:**
+
+| Point | NMSE TEST |
+|---|---:|
+| Dense `0%` | `≈ -37.646 dB` |
+| `30%` | `≈ -37.941 dB` |
+| `40%` intermediate | `≈ -37.959 dB` |
+| `50%` | `≈ -37.850 dB` |
+| `60%` | `≈ -37.687 dB` |
+
+**Layer-wise dense-first results:**
+
+| Point | NMSE TEST |
+|---|---:|
+| Dense `0%` | `≈ -37.646 dB` |
+| `30%` | `≈ -37.580 dB` |
+| `50%` | `≈ -37.142 dB` |
+| `60%` | `≈ -35.822 dB` |
+
+**Interpretation:**
+
+- Global iterative pruning is currently the best pruning strategy for this N25 ELU configuration.
+- The global iterative `40%` intermediate point is the best observed NMSE TEST point in this comparison at approximately `-37.959 dB`.
+- The requested global iterative checkpoints remain strong through `60%`, with `60%` still approximately matching or slightly improving the dense baseline.
+- Layer-wise dense-first pruning is not selected as the main candidate in its current form because it degrades more strongly, especially at `50%` and `60%`.
+- The layer-wise `60%` point drops to approximately `-35.822 dB`, making it materially worse than global iterative pruning and worse than the dense baseline.
+- Recommendation for the next confirmation run: add `40%` to the official iterative sparsity list so it is reported as a requested checkpoint rather than only an intermediate point. This is a documentation recommendation only; config was not changed in this task.
+
+**Limitations:**
+
+- ACPR remains `INVALID_CONFIG` pending channel bandwidth/spacing configuration, so no ACPR conclusion should be drawn.
+- EVM remains time-domain normalized EVM over temporal signals, not demodulated 5G NR EVM.
+
+**Decision:**
+
+Keep global iterative pruning as the current main pruning strategy. Do not promote layer-wise pruning as the main candidate without further changes or evidence.
+
+**Reference detailed index:**
+
+See `docs/RESULTS_INDEX.md`.
 
 ---
 

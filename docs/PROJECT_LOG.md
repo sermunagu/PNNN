@@ -1346,6 +1346,115 @@ Results:
 
 ---
 
+### 2026-05-03 — Iterative and layer-wise dense-first pruning experiments
+
+Objective:
+- Add two manual pruning experiment modes based on the dense-first workflow: iterative pruning from dense and layer-wise pruning from dense.
+
+Files modified:
+- `config/getPNNNConfig.m`
+- `train_PNNN_offline.m`
+- `toolbox/pruning/validatePruningConfig.m`
+- `toolbox/pruning/createMagnitudePruningMasks.m`
+- `experiments/denseFirstPruningSweepHelpers.m`
+- `experiments/run_PNNN_iterative_pruning_sweep_from_dense_first.m`
+- `experiments/run_PNNN_layerwise_pruning_sweep_from_dense_first.m`
+- `docs/RUNBOOK.md`
+- `docs/PROJECT_LOG.md`
+
+Changes made:
+- Added centralized sweep defaults for iterative step size, iterative fine-tuning epochs, iterative output root, and layer-wise output root.
+- Extended pruning validation to accept `cfg.pruning.scope = "layerwise"` while keeping `global` as the default.
+- Extended magnitude mask creation so `global` still ranks all podable tensors together and `layerwise` prunes the requested fraction independently inside each podable tensor.
+- Added a shared helper factory for the new dense-first experiment scripts.
+- Added `run_PNNN_iterative_pruning_sweep_from_dense_first.m`, where each final sparsity is reached by cumulative previous-step warm starts.
+- Added `run_PNNN_layerwise_pruning_sweep_from_dense_first.m`, where all pruned runs warm-start from the dense deploy and force layer-wise pruning.
+- Updated the runbook with manual commands and usage notes for one-shot dense-first, iterative dense-first, and layer-wise dense-first pruning.
+- No experimental results were added.
+
+Commands executed by Codex:
+- Lightweight Git status and source/documentation inspection.
+- Static diff checks only.
+
+Results:
+- No MATLAB training was executed.
+- No MATLAB inference was executed.
+- No pruning, activation, iterative, layer-wise, or dense-first sweep script was executed by Codex.
+- No `measurements/`, `results/`, `generated_outputs/`, `.mat`, `.fig`, `deploy_package.mat`, or generated CSV/XLSX/MAT result artifact was modified.
+
+Manual commands for Sergi:
+- `matlab -batch "run('experiments/run_PNNN_iterative_pruning_sweep_from_dense_first.m')"`
+- `matlab -batch "run('experiments/run_PNNN_layerwise_pruning_sweep_from_dense_first.m')"`
+
+---
+
+### 2026-05-03 — Iterative dense-first pruning as single chain
+
+Objective:
+- Refactor `run_PNNN_iterative_pruning_sweep_from_dense_first.m` so iterative pruning uses one monotonic chain instead of restarting a chain independently for each requested target sparsity.
+
+Files modified:
+- `experiments/run_PNNN_iterative_pruning_sweep_from_dense_first.m`
+- `docs/RUNBOOK.md`
+- `docs/PROJECT_LOG.md`
+
+Changes made:
+- The iterative script now builds one executed sparsity sequence up to the maximum requested sparsity.
+- Each step warm-starts from the previous step deploy with `useLatestDeploy=false` and `skipInitialTraining=true`.
+- Only requested sparsities from `cfg.sweep.sparsityList` are appended to the global sweep summary as checkpoints.
+- Intermediate steps are saved under clear `iterative_step_XXX` folders and printed as `INTERMEDIATE`; requested targets are printed as `TARGET CHECKPOINT`.
+- `sweep_config` now records `executedIterativeSparsityList`, `targetCheckpointMask`, previous-step source deploys, step deploys, and final checkpoint deploys.
+- No experiment results were added.
+
+Commands executed by Codex:
+- Lightweight Git status and source/documentation inspection.
+- Static diff checks only.
+
+Results:
+- No MATLAB training was executed.
+- No MATLAB inference was executed.
+- No pruning, activation, iterative, layer-wise, or dense-first sweep script was executed by Codex.
+- No `measurements/`, `results/`, `generated_outputs/`, `.mat`, `.fig`, `deploy_package.mat`, or generated CSV/XLSX/MAT result artifact was modified.
+
+Manual command for Sergi:
+- `matlab -batch "run('experiments/run_PNNN_iterative_pruning_sweep_from_dense_first.m')"`
+
+---
+
+### 2026-05-03 — Pruning result review and layer-wise reporting label
+
+Objective:
+- Correct the final summary pruning method label for layer-wise runs and document the current pruning experiment results.
+
+Files modified:
+- `toolbox/reporting/printFinalPNNNSummary.m`
+- `docs/EXPERIMENTS_LOG.md`
+- `docs/RESULTS_INDEX.md`
+- `docs/RUNBOOK.md`
+- `docs/PROJECT_LOG.md`
+
+Changes made:
+- `printFinalPNNNSummary.m` now builds the pruning method label from `pruningStats.scope`, so layer-wise runs report `layerwise magnitude, weights only` instead of `global magnitude, weights only`.
+- Documented that global iterative pruning is currently the best pruning strategy for the N25 ELU setup.
+- Documented global iterative TEST NMSE values: dense `0%` approximately `-37.646 dB`, `30%` approximately `-37.941 dB`, `40%` intermediate approximately `-37.959 dB`, `50%` approximately `-37.850 dB`, and `60%` approximately `-37.687 dB`.
+- Documented layer-wise dense-first TEST NMSE values: dense `0%` approximately `-37.646 dB`, `30%` approximately `-37.580 dB`, `50%` approximately `-37.142 dB`, and `60%` approximately `-35.822 dB`.
+- Recorded that layer-wise pruning is not selected as the main candidate in its current form because it degrades more strongly, especially at `50%` and `60%`.
+- Added a docs-only recommendation to include `40%` in the official iterative sparsity list for the next confirmation run.
+- Kept ACPR documented as `INVALID_CONFIG` pending channel bandwidth/spacing configuration.
+- Kept EVM documented as time-domain normalized EVM, not demodulated 5G NR EVM.
+
+Commands executed by Codex:
+- Lightweight Git status and source/documentation inspection.
+- Static diff checks only.
+
+Results:
+- No MATLAB training was executed.
+- No MATLAB inference was executed.
+- No pruning, activation, iterative, layer-wise, or dense-first sweep script was executed by Codex.
+- No `measurements/`, `results/`, `generated_outputs/`, `.mat`, `.fig`, `deploy_package.mat`, or generated CSV/XLSX/MAT result artifact was modified.
+
+---
+
 ## Plantilla para futuras entradas
 
 Copiar y rellenar esta plantilla después de cada intervención relevante:

@@ -2,7 +2,7 @@ function pruningCfg = validatePruningConfig(pruningCfg)
 % validatePruningConfig - Normalize and validate PNNN pruning options.
 %
 % This function fills missing pruning fields, converts types, and enforces
-% the constraints supported by the first global magnitude-pruning flow.
+% the constraints supported by the PNNN magnitude-pruning flow.
 %
 % Inputs:
 %   pruningCfg - Struct with optional pruning configuration fields.
@@ -33,8 +33,9 @@ pruningCfg.freezePruned = logical(pruningCfg.freezePruned);
 if pruningCfg.sparsity < 0 || pruningCfg.sparsity > 1
     error("cfg.pruning.sparsity debe estar entre 0 y 1.");
 end
-if pruningCfg.scope ~= "global"
-    error("Esta primera version solo soporta cfg.pruning.scope='global'.");
+validScopes = ["global", "layerwise"];
+if ~ismember(pruningCfg.scope, validScopes)
+    error("cfg.pruning.scope debe ser 'global' o 'layerwise'.");
 end
 if pruningCfg.fineTuneEpochs < 0 || pruningCfg.fineTuneEpochs ~= floor(pruningCfg.fineTuneEpochs)
     error("cfg.pruning.fineTuneEpochs debe ser un entero no negativo.");

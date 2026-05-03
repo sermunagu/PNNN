@@ -279,7 +279,7 @@ pruningState = struct();
 pruningFineTuneInfo = struct();
 
 if cfg.pruning.enabled
-    fprintf("\n--- Magnitude pruning global ---\n");
+    fprintf("\n--- Magnitude pruning (%s) ---\n", char(string(cfg.pruning.scope)));
     [pruningState, pruningStats] = createMagnitudePruningMasks(netDPD, cfg.pruning);
     netDPD = applyLearnableMasks(netDPD, pruningState.masks);
     [~, pruningStats] = checkPruningMaskIntegrity( ...
