@@ -6,6 +6,9 @@
 # Local Codex/ChatGPT handoff artifacts
 /.codex_handoff/
 
+# Local review patches
+*.patch
+
 # MATLAB binary outputs and deploy packages
 *.mat
 deploy_package.mat
@@ -22,3 +25,6 @@ matlab_crash_dump.*
 # OS files
 .DS_Store
 Thumbs.db
+
+# Local review patches
+*.patch
