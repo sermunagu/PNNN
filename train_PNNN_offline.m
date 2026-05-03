@@ -563,8 +563,10 @@ for i = 1:numel(numNeurons)
             layers = [layers sigmoidLayer(Name="act"+i)]; %#ok<AGROW>
         case "elu"
             layers = [layers eluLayer(Name="act"+i)]; %#ok<AGROW>
+        case "tanh"
+            layers = [layers tanhLayer(Name="act"+i)]; %#ok<AGROW>
         otherwise
-            error("actType debe ser 'leakyrelu', 'relu', 'sigmoid' o 'elu'.");
+            error("actType debe ser 'leakyrelu', 'relu', 'sigmoid', 'elu' o 'tanh'.");
     end
 end
 

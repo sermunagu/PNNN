@@ -34,7 +34,7 @@ cfg.split.method = 'stratified_by_amplitude';
 cfg.split.trainRatio = 0.70;
 cfg.split.valRatio = 0.15;
 cfg.split.testRatio = 0.15;
-cfg.split.seed = 42;
+cfg.split.seed = 45;
 
 cfg.model = struct();
 cfg.model.M = 13;
@@ -47,13 +47,13 @@ cfg.model.removeDC = true;
 
 cfg.training = struct();
 cfg.training.optimizer = "adam";
-cfg.training.maxEpochs = 300;
+cfg.training.maxEpochs = 150;
 cfg.training.miniBatchSize = 1024;
 cfg.training.initialLearnRate = 2e-4;
 cfg.training.learnRateSchedule = "piecewise";
 cfg.training.learnRateDropPeriod = 5;
 cfg.training.learnRateDropFactor = 0.95;
-cfg.training.validationPatience = 100;
+cfg.training.validationPatience = 50;
 cfg.training.trainingPlots = 'none'; % 'training-progress' o 'none'
 cfg.training.verbose = true;
 cfg.training.shuffle = "every-epoch";
@@ -83,7 +83,7 @@ cfg.metrics.acpr.outOfBandPolicy = "nan";
 
 cfg.pruning = struct();
 cfg.pruning.enabled = true;
-cfg.pruning.sparsity = 0.5;
+cfg.pruning.sparsity = 0.3;
 cfg.pruning.scope = "global";
 cfg.pruning.includeBias = false;
 cfg.pruning.fineTuneEnabled = true;
@@ -173,11 +173,14 @@ cfg.warmStart.skipInitialTraining = false; % false: reentrenar modelo rapidament
 cfg.warmStart.maxEpochsOverride = 30;
 
 cfg.sweep = struct();
-cfg.sweep.sparsityList = [0 0.3 0.5 0.6 0.7];
+cfg.sweep.sparsityList = [0, 0.3, 0.5];
 cfg.sweep.fineTuneEpochs = cfg.pruning.fineTuneEpochs;
 cfg.sweep.includeBias = cfg.pruning.includeBias;
 cfg.sweep.freezePruned = cfg.pruning.freezePruned;
 cfg.sweep.pruningScope = cfg.pruning.scope;
 cfg.sweep.outputRoot = fullfile(cfg.paths.resultsDir, 'pruning_sweeps');
+cfg.sweep.activationList = ["elu", "tanh", "sigmoid", "leakyrelu"];
+cfg.sweep.activationSparsity = 0.5;
+cfg.sweep.activationOutputRoot = fullfile(cfg.paths.resultsDir, 'activation_sweeps');
 cfg.sweep.exportFigure = false;
 end

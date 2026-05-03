@@ -1178,6 +1178,44 @@ Cambios realizados:
 
 ---
 
+### 2026-05-03 — Estabilidad N25 ELU seed 45 y sweep de activaciones
+
+Objetivo:
+- Documentar el sweep reducido de estabilidad N25 ELU con `seed = 45`.
+- Añadir un script manual para comparar funciones de activación con pruning fijo.
+
+Archivos modificados:
+- `docs/EXPERIMENTS_LOG.md`
+- `docs/RESULTS_INDEX.md`
+- `docs/PROJECT_LOG.md`
+- `config/getPNNNConfig.m`
+- `train_PNNN_offline.m`
+- `experiments/run_PNNN_activation_sweep.m`
+
+Cambios realizados:
+- Se documentó `results/pruning_sweeps/20260503_0206` por ruta local, dejando claro que `results/` no se versiona.
+- Se registró que la seed 45 no confirma mejora NMSE por pruning: el denso queda mejor, `30%` degrada solo `0.07209 dB` y `50%` degrada `0.26593 dB` manteniendo ventaja frente a GMP justo pinv.
+- Se mantuvo ACPR como `INVALID_CONFIG` pendiente de channel bandwidth y EVM como métrica temporal normalizada.
+- Se añadió soporte mínimo para `actType = 'tanh'` en `buildLayers`.
+- Se añadió `experiments/run_PNNN_activation_sweep.m`, análogo al pruning sweep, con subcarpetas `activation_*` bajo `results/activation_sweeps/<timestamp>/`.
+- Se añadieron defaults centralizados para `cfg.sweep.activationList`, `cfg.sweep.activationSparsity` y `cfg.sweep.activationOutputRoot`.
+
+Comandos ejecutados por Codex:
+- Inspección ligera de Markdown, configuración, scripts y resúmenes CSV/TXT existentes.
+- Checks Git/textuales ligeros.
+
+Resultados:
+- No se ejecutaron entrenamientos.
+- No se ejecutaron inferencias.
+- No se ejecutaron pruning sweeps ni activation sweeps.
+- No se modificaron `measurements/`, `results/`, `generated_outputs/`, `.mat`, `.fig`, `deploy_package.mat` ni artefactos CSV/XLSX/MAT generados.
+
+Pendiente:
+- Sergi debe lanzar manualmente `matlab -batch "run('experiments/run_PNNN_activation_sweep.m')"` si quiere ejecutar el nuevo sweep.
+- ACPR necesita configuración de ancho/separación de canal antes de usarse en conclusiones.
+
+---
+
 ## Plantilla para futuras entradas
 
 Copiar y rellenar esta plantilla después de cada intervención relevante:

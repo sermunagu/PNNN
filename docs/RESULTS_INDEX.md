@@ -23,10 +23,58 @@ Este fichero sirve para localizar rápidamente:
 | 2026-04-29 | `experiment20260429T134032_xy` | PNNN phase-normalized, no pruning | `-38.509 dB` | `-38.5342 dB` | Not recorded in this entry | No inference output recorded | `yhat` when inference is run |
 | 2026-04-30 | `experiment20260429T134032_xy` | PNNN phase-normalized, global magnitude pruning 30% | `-38.62 dB` | `-38.61 dB` | `results/NN_DPD_xy_forward_M13O1357_N128_phaseNorm_full_elu_experiment20260429T134032_xy_20260430_offline/deploy_package.mat` | No inference output recorded | `yhat` when inference is run |
 | 2026-05-03 | `experiment20260429T134032_xy` | Important current result: N25 ELU global pruning sweep | Best `30%`: `-37.904 dB`; balanced `50%`: `-37.750 dB` | Best `30%`: `-37.905 dB`; balanced `50%`: `-37.744 dB` | Sweep folder: `results/pruning_sweeps/20260503_0013` | No inference output recorded | `yhat` when inference is run |
+| 2026-05-03 | `experiment20260429T134032_xy` | N25 ELU pruning stability sweep, seed 45 | Dense: `-37.896 dB`; `30%`: `-37.830 dB`; `50%`: `-37.595 dB` | Dense: `-37.804 dB`; `30%`: `-37.732 dB`; `50%`: `-37.538 dB` | Sweep folder: `results/pruning_sweeps/20260503_0206` | No inference output recorded | `yhat` when inference is run |
 
 ---
 
 ## Resultados asociados a `experiment20260429T134032_xy`
+
+### 2026-05-03 N25 ELU pruning stability sweep, seed 45
+
+- Sweep folder: `results/pruning_sweeps/20260503_0206`
+- `results/` is not versioned; this result is indexed by local sweep path, not by committing `.mat` or generated result artifacts.
+- Measurement: `experiment20260429T134032_xy`
+- `mappingMode = xy_forward`
+- Local X/Y convention applies: `X` is the input of the modeled block and `Y` is its output; `xy_forward` is not automatically PA-forward.
+- Model: PNNN `phaseNorm full`
+- `M = 13`
+- `orders = [1 3 5 7]`
+- `inputDim = 84`
+- `numNeurons = 25`
+- `actType = elu`
+- Split: train `70%`, val `15%`, test `15%`, `seed = 45`
+- Sparsity list: `[0 0.3 0.5]`
+- Pruning: global magnitude, weights only.
+- Bias protected: `includeBias = 0`.
+- `freezePruned = 1`.
+- Fine-tuning after pruning: `20` epochs.
+- GMP justo same split: TEST pinv `-36.63 dB`, TEST ridge `1e-4` `-36.38 dB`.
+
+| Sparsity | Remaining weights | NMSE Train+Val | NMSE Test | Gain vs 0% | Gain vs GMP justo pinv | EVM Test | PAPR Test | Mask |
+|---:|---:|---:|---:|---:|---:|---:|---:|---|
+| `0%` | `2150` | `-37.896 dB` | `-37.804 dB` | `0 dB` | `+1.1727 dB` | `1.2877%` | `14.109 dB` | `N/A` |
+| `30%` | `1505` | `-37.830 dB` | `-37.732 dB` | `-0.07209 dB` | `+1.1006 dB` | `1.2984%` | `14.027 dB` | `OK` |
+| `50%` | `1075` | `-37.595 dB` | `-37.538 dB` | `-0.26593 dB` | `+0.90675 dB` | `1.3277%` | `14.048 dB` | `OK` |
+
+Interpretation:
+
+- This seed does not confirm that `30%` pruning improves over the dense model.
+- The dense N25 ELU model gets the best TEST NMSE at `-37.804 dB`.
+- `30%` pruning is practically equivalent to dense, with only `0.07209 dB` loss.
+- `50%` pruning remains a defensible balanced point: half the weights, `0.26593 dB` loss versus dense, and still `+0.90675 dB` versus GMP justo pinv.
+- Honest conclusion: global pruning can reduce `30%` to `50%` of weights with low degradation; it should not be presented as always improving NMSE.
+
+Recommended candidates:
+
+- Maximum performance with moderate complexity: N25 ELU + `30%` global pruning.
+- Defensible balanced candidate: N25 ELU + `50%` global pruning.
+
+Limitations:
+
+- ACPR remains `INVALID_CONFIG` because channel bandwidth is not configured. Do not use ACPR for conclusions.
+- EVM is time-domain normalized EVM, not demodulated 5G NR EVM.
+
+---
 
 ### Important current result: 2026-05-03 N25 ELU global pruning sweep
 

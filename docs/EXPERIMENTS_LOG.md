@@ -35,8 +35,76 @@ Regla práctica: si una entrada no cabe razonablemente en una pantalla, debe res
 
 | Fecha | Medida | Experimento | Decisión / conclusión |
 |---|---|---|---|
+| 2026-05-03 | `experiment20260429T134032_xy` | Estabilidad N25 ELU seed 45 | La seed 45 no confirma mejora NMSE por pruning; 30% y 50% mantienen degradación baja y siguen por encima de GMP justo pinv. |
 | 2026-05-03 | `experiment20260429T134032_xy` | Sweep N25 ELU con pruning global | Para N25 ELU, el 30% da el mejor NMSE TEST y el 50% es el mejor compromiso complejidad/rendimiento; ACPR queda pendiente por configuración de ancho de canal. |
 | 2026-04-29/30 | `experiment20260429T134032_xy` | Baseline PNNN vs pruning 30% | El pruning global al 30% no degrada; mejora muy ligeramente el NMSE TEST y mantiene ventaja clara frente a GMP. |
+
+---
+
+## 2026-05-03 — Estabilidad N25 ELU seed 45
+
+**Medida:** `experiment20260429T134032_xy`
+
+**Carpeta del sweep:** `results/pruning_sweeps/20260503_0206`
+
+`results/` no se versiona; este resultado queda documentado por ruta local del sweep, no por incluir ficheros `.mat` o artefactos generados en Git.
+
+**Descripción:** medida tomada de `experiment20260429T134032`; `mappingMode = xy_forward`. En la convención local del proyecto, `X` es la entrada del bloque modelado e `Y` su salida, por lo que `xy_forward` no debe reinterpretarse automáticamente como PA-forward.
+
+**Objetivo:** comprobar estabilidad del resultado N25 ELU con otra seed de split (`seed = 45`) y un sweep reducido de sparsity.
+
+**Configuración:**
+
+- `model = PNNN phaseNorm full`
+- `M = 13`
+- `orders = [1 3 5 7]`
+- `inputDim = 84`
+- `numNeurons = 25`
+- `actType = elu`
+- split `70%` train, `15%` val, `15%` test
+- `seed = 45`
+- `sparsityList = [0 0.3 0.5]`
+- pruning global por magnitud, solo pesos
+- bias protegido: `includeBias = 0`
+- `freezePruned = 1`
+- fine-tuning posterior al pruning: `20` épocas
+
+**GMP justo mismo split:**
+
+| Referencia | NMSE TEST |
+|---|---:|
+| GMP justo pinv | `-36.63 dB` |
+| GMP justo ridge `1e-4` | `-36.38 dB` |
+
+**Resultados compactos:**
+
+| Sparsity | Pesos restantes | NMSE Train+Val | NMSE Test | Gain vs 0% | Gain vs GMP justo pinv | EVM Test | PAPR Test | Mask |
+|---:|---:|---:|---:|---:|---:|---:|---:|---|
+| `0%` | `2150` | `-37.896 dB` | `-37.804 dB` | `0 dB` | `+1.1727 dB` | `1.2877%` | `14.109 dB` | `N/A` |
+| `30%` | `1505` | `-37.830 dB` | `-37.732 dB` | `-0.07209 dB` | `+1.1006 dB` | `1.2984%` | `14.027 dB` | `OK` |
+| `50%` | `1075` | `-37.595 dB` | `-37.538 dB` | `-0.26593 dB` | `+0.90675 dB` | `1.3277%` | `14.048 dB` | `OK` |
+
+**Interpretación:**
+
+- Esta seed no confirma que el `30%` pruning mejore al modelo denso.
+- El modelo denso obtiene el mejor NMSE TEST: `-37.804 dB`.
+- El `30%` pruning mantiene rendimiento prácticamente equivalente al denso, con solo `0.07209 dB` de pérdida.
+- El `50%` pruning mantiene un compromiso defendible: mitad de pesos, pérdida de `0.26593 dB` frente al denso y todavía `+0.90675 dB` frente a GMP justo pinv.
+- La conclusión honesta es que el pruning global permite reducir `30%` a `50%` de pesos con degradación baja, no que mejore siempre el NMSE.
+
+**Limitaciones:**
+
+- ACPR sigue en `INVALID_CONFIG` porque falta configurar el channel bandwidth. No usar ACPR para conclusiones.
+- EVM es EVM temporal normalizada, no EVM 5G NR demodulada.
+
+**Candidatos recomendados:**
+
+- Máximo rendimiento con complejidad moderada: N25 ELU + `30%` global pruning.
+- Candidato equilibrado defendible: N25 ELU + `50%` global pruning.
+
+**Referencia detallada:**
+
+Ver `docs/RESULTS_INDEX.md`.
 
 ---
 
