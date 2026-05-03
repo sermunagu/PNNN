@@ -35,6 +35,7 @@ Regla práctica: si una entrada no cabe razonablemente en una pantalla, debe res
 
 | Fecha | Medida | Experimento | Decisión / conclusión |
 |---|---|---|---|
+| 2026-05-03 | `experiment20260429T134032_xy` | Robustness confirmation: dense-first iterative global pruning, seed 42 | Confirms the seed 45 trend; `30%`-`40%` is the best practical plateau, `40%` remains the main candidate, and `50%` remains the balanced compression candidate. |
 | 2026-05-03 | `experiment20260429T134032_xy` | Official dense-first iterative global pruning with 40% checkpoint | Iterative global `40%` is the current best performance candidate; `50%` remains the balanced compression candidate; layer-wise pruning is not selected. |
 | 2026-05-03 | `experiment20260429T134032_xy` | Dense-first N25 ELU pruning sweep | The dense-first flow works as intended; `30%` is the best TEST NMSE point in this sweep, `50%` is the stronger compression/performance trade-off, and `60%` remains above GMP justo pinv. |
 | 2026-05-03 | `experiment20260429T134032_xy` | Activation sweep al 50% pruning | Para esta medida/configuración, ELU es la mejor activación probada en el candidato N25 50% pruned; ACPR sigue inválido. |
@@ -42,6 +43,51 @@ Regla práctica: si una entrada no cabe razonablemente en una pantalla, debe res
 | 2026-05-03 | `experiment20260429T134032_xy` | Estabilidad N25 ELU seed 45 | La seed 45 no confirma mejora NMSE por pruning; 30% y 50% mantienen degradación baja y siguen por encima de GMP justo pinv. |
 | 2026-05-03 | `experiment20260429T134032_xy` | Sweep N25 ELU con pruning global | Para N25 ELU, el 30% da el mejor NMSE TEST y el 50% es el mejor compromiso complejidad/rendimiento; ACPR queda pendiente por configuración de ancho de canal. |
 | 2026-04-29/30 | `experiment20260429T134032_xy` | Baseline PNNN vs pruning 30% | El pruning global al 30% no degrada; mejora muy ligeramente el NMSE TEST y mantiene ventaja clara frente a GMP. |
+
+---
+
+## 20260503_1842 — Robustness confirmation for dense-first iterative global pruning
+
+**Measurement:** `experiment20260429T134032_xy`
+
+**Sweep folder:** `results/pruning_sweeps/20260503_1842`
+
+`results/` is not versioned; this sweep is documented by its local result path, not by committing `.mat`, `.fig`, deploy packages, CSV/XLSX/MAT summaries, or other generated result artifacts.
+
+**Purpose:** confirm the previous seed `45` dense-first iterative global pruning trend using split seed `42`. This is a separate robustness confirmation run from `results/pruning_sweeps/20260503_1727`; the `20260503_1727` entry remains the previous official seed `45` run.
+
+**Configuration:** N25 ELU PNNN with phase-normalized `full` features, `M = 13`, `orders = [1 3 5 7]`, `mappingMode = xy_forward`, and split `70%` train, `15%` val, `15%` test with `seed = 42`. Under the local PNNN X/Y convention, `X` is the input of the modeled block and `Y` is its output; `xy_forward` must not be reinterpreted automatically as physical PA-forward modeling.
+
+**Pruning mode:** dense-first single-chain iterative global magnitude pruning, weights only. Executed iterative steps were `[0.1 0.2 0.3 0.4 0.5 0.6]`; target checkpoints were `[0.3 0.4 0.5 0.6]`.
+
+**Final compact summary:**
+
+| Sparsity | NMSE Train+Val | NMSE TEST | Gain vs dense | Gain vs GMP justo pinv | Pruned | Remaining | Mask |
+|---:|---:|---:|---:|---:|---:|---:|:---|
+| Dense `0%` | `-37.716 dB` | `-37.740 dB` | `0 dB` | `+1.0854 dB` | `0` | `2150` | `N/A` |
+| Iterative global `30%` | `-38.027 dB` | `-38.043 dB` | `+0.30289 dB` | `+1.3883 dB` | `645` | `1505` | `OK` |
+| Iterative global `40%` | `-38.027 dB` | `-38.044 dB` | `+0.30372 dB` | `+1.3891 dB` | `860` | `1290` | `OK` |
+| Iterative global `50%` | `-37.924 dB` | `-37.933 dB` | `+0.19292 dB` | `+1.2783 dB` | `1075` | `1075` | `OK` |
+| Iterative global `60%` | `-37.809 dB` | `-37.827 dB` | `+0.086876 dB` | `+1.1723 dB` | `1290` | `860` | `OK` |
+
+**Interpretation:**
+
+- This seed `42` run confirms the seed `45` trend from `results/pruning_sweeps/20260503_1727`.
+- `results/pruning_sweeps/20260503_1842` must be read as a separate robustness confirmation run, not as a replacement or relabeling of the previous seed `45` run.
+- The best practical region is a `30%`-`40%` sparsity plateau.
+- `40%` remains the current main candidate because it gives practically the same NMSE as `30%` while pruning more weights.
+- `50%` remains the balanced compression/performance candidate.
+- `60%` is still above dense and GMP in this run, but it is not the main candidate because degradation starts to appear relative to `30%`-`40%`.
+- Layer-wise pruning remains not selected as the main route.
+
+**Limitations:**
+
+- ACPR remains `INVALID_CONFIG` pending channel bandwidth/spacing configuration, so no ACPR conclusion should be drawn.
+- EVM remains time-domain normalized EVM over temporal signals, not demodulated 5G NR EVM.
+
+**Decision:**
+
+Keep dense-first iterative global pruning as the main pruning route. Treat `40%` as the current main N25 ELU pruning candidate and `50%` as the balanced compression candidate.
 
 ---
 

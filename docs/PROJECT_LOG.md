@@ -1487,6 +1487,40 @@ Results:
 
 ---
 
+### 2026-05-03 — Iterative pruning robustness confirmation seed 42 documented
+
+Objective:
+- Document Sergi's official robustness confirmation run for dense-first iterative global pruning with split `seed = 42`.
+
+Files modified:
+- `docs/EXPERIMENTS_LOG.md`
+- `docs/RESULTS_INDEX.md`
+- `docs/RUNBOOK.md`
+- `docs/PROJECT_LOG.md`
+
+Changes made:
+- Added `results/pruning_sweeps/20260503_1842` as the seed `42` robustness confirmation for dense-first single-chain iterative global pruning.
+- Clarified that `results/pruning_sweeps/20260503_1842` is separate from the previous official seed `45` run in `results/pruning_sweeps/20260503_1727`; the seed `45` entry remains distinct.
+- Documented executed iterative steps `[0.1 0.2 0.3 0.4 0.5 0.6]` and target checkpoints `[0.3 0.4 0.5 0.6]`.
+- Documented the official TEST NMSE checkpoints: dense `0%` `-37.740 dB`, `30%` `-38.043 dB`, `40%` `-38.044 dB`, `50%` `-37.933 dB`, and `60%` `-37.827 dB`.
+- Recorded that the seed `42` run confirms the previous seed `45` trend: the best practical region is a `30%`-`40%` plateau.
+- Kept `40%` as the current main candidate and `50%` as the balanced compression/performance candidate.
+- Recorded that layer-wise pruning remains not selected as the main route.
+- Kept ACPR documented as `INVALID_CONFIG` pending channel bandwidth/spacing configuration.
+- Kept EVM documented as time-domain normalized EVM, not demodulated 5G NR EVM.
+
+Commands executed by Codex:
+- Lightweight Git status and documentation inspection.
+- Static diff checks only.
+
+Results:
+- No MATLAB training was executed.
+- No MATLAB inference was executed.
+- No pruning, activation, iterative, layer-wise, or dense-first sweep script was executed by Codex.
+- No `measurements/`, `results/`, `generated_outputs/`, `.mat`, `.fig`, `deploy_package.mat`, or generated CSV/XLSX/MAT result artifact was modified.
+
+---
+
 ## Plantilla para futuras entradas
 
 Copiar y rellenar esta plantilla después de cada intervención relevante:

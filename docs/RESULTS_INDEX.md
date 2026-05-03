@@ -27,12 +27,53 @@ Este fichero sirve para localizar rápidamente:
 | 2026-05-03 | `experiment20260429T134032_xy` | N25 ELU seed 45 pruning sweep, 150 initial epochs | Dense: `-37.815 dB`; `30%`: `-37.776 dB`; `50%`: `-37.592 dB` | Dense: `-37.714 dB`; `30%`: `-37.684 dB`; `50%`: `-37.524 dB` | Sweep folder: `results/pruning_sweeps/20260503_0300` | No inference output recorded | `yhat` when inference is run |
 | 2026-05-03 | `experiment20260429T134032_xy` | N25 50% pruning activation sweep | Best activation ELU: `-37.616 dB`; leakyReLU: `-37.141 dB`; sigmoid: `-37.049 dB`; tanh: `-36.994 dB` | Best activation ELU: `-37.533 dB`; leakyReLU: `-37.062 dB`; sigmoid: `-37.031 dB`; tanh: `-36.901 dB` | Sweep folder: `results/activation_sweeps/20260503_0328` | No inference output recorded | `yhat` when inference is run |
 | 2026-05-03 | `experiment20260429T134032_xy` | N25 ELU dense-first pruning sweep | Dense: `-37.737 dB`; `30%`: `-37.770 dB`; `50%`: `-37.501 dB`; `60%`: `-37.183 dB` | Dense: `-37.646 dB`; best `30%`: `-37.679 dB`; `50%`: `-37.411 dB`; `60%`: `-37.098 dB` | Sweep folder: `results/pruning_sweeps/20260503_1105`; dense deploy source in `sparsity_000` | No inference output recorded | `yhat` when inference is run |
-| 2026-05-03 | `experiment20260429T134032_xy` | Current best pruning strategy: N25 ELU dense-first iterative global pruning | Dense: not provided; documented by TEST and gains | Dense: `-37.646 dB`; `30%`: `-37.941 dB`; official `40%`: `-37.968 dB`; `50%`: `-37.862 dB`; `60%`: `-37.734 dB` | Sweep folder: `results/pruning_sweeps/20260503_1727`; generated artifacts not versioned | No inference output recorded | `yhat` when inference is run |
+| 2026-05-03 | `experiment20260429T134032_xy` | Robustness confirmation: N25 ELU dense-first iterative global pruning, seed 42 | Dense: `-37.716 dB`; `30%`: `-38.027 dB`; `40%`: `-38.027 dB`; `50%`: `-37.924 dB`; `60%`: `-37.809 dB` | Dense: `-37.740 dB`; `30%`: `-38.043 dB`; `40%`: `-38.044 dB`; `50%`: `-37.933 dB`; `60%`: `-37.827 dB` | Sweep folder: `results/pruning_sweeps/20260503_1842`; generated artifacts not versioned | No inference output recorded | `yhat` when inference is run |
+| 2026-05-03 | `experiment20260429T134032_xy` | N25 ELU dense-first iterative global pruning, seed 45 official run | Dense: not provided; documented by TEST and gains | Dense: `-37.646 dB`; `30%`: `-37.941 dB`; official `40%`: `-37.968 dB`; `50%`: `-37.862 dB`; `60%`: `-37.734 dB` | Sweep folder: `results/pruning_sweeps/20260503_1727`; generated artifacts not versioned | No inference output recorded | `yhat` when inference is run |
 | 2026-05-03 | `experiment20260429T134032_xy` | N25 ELU layer-wise dense-first pruning sweep | Dense: not provided; documented by TEST only | Dense: `≈ -37.646 dB`; `30%`: `≈ -37.580 dB`; `50%`: `≈ -37.142 dB`; `60%`: `≈ -35.822 dB` | Local generated sweep summaries under `results/`; artifacts not versioned | No inference output recorded | `yhat` when inference is run |
 
 ---
 
 ## Resultados asociados a `experiment20260429T134032_xy`
+
+### 2026-05-03 Robustness confirmation: dense-first iterative global pruning, seed 42
+
+- Sweep folder: `results/pruning_sweeps/20260503_1842`
+- `results/` is not versioned; this result is indexed by local sweep path, not by committing `.mat`, `.fig`, deploy packages, CSV/XLSX/MAT summaries, or generated result artifacts.
+- This is a separate robustness confirmation run with split `seed = 42`; the previous official seed `45` run remains indexed separately as `results/pruning_sweeps/20260503_1727`.
+- Script family: dense-first single-chain iterative global pruning (`experiments/run_PNNN_iterative_pruning_sweep_from_dense_first.m`).
+- Measurement: `experiment20260429T134032_xy`
+- `mappingMode = xy_forward`
+- Local X/Y convention applies: `X` is the input of the modeled block and `Y` is its output; `xy_forward` is not automatically PA-forward.
+- Model: PNNN `phaseNorm full`, N25, ELU.
+- `M = 13`
+- `orders = [1 3 5 7]`
+- Split: train `70%`, val `15%`, test `15%`, `seed = 42`
+- Executed iterative steps: `[0.1 0.2 0.3 0.4 0.5 0.6]`
+- Target checkpoints: `[0.3 0.4 0.5 0.6]`
+- ACPR remains `INVALID_CONFIG` pending channel bandwidth/spacing configuration.
+- EVM remains time-domain normalized EVM, not demodulated 5G NR EVM.
+
+Official seed `42` checkpoints:
+
+| Sparsity | NMSE Train+Val | NMSE TEST | Gain vs dense | Gain vs GMP justo pinv | Pruned | Remaining | Mask |
+|---:|---:|---:|---:|---:|---:|---:|:---|
+| Dense `0%` | `-37.716 dB` | `-37.740 dB` | `0 dB` | `+1.0854 dB` | `0` | `2150` | `N/A` |
+| Iterative global `30%` | `-38.027 dB` | `-38.043 dB` | `+0.30289 dB` | `+1.3883 dB` | `645` | `1505` | `OK` |
+| Iterative global `40%` | `-38.027 dB` | `-38.044 dB` | `+0.30372 dB` | `+1.3891 dB` | `860` | `1290` | `OK` |
+| Iterative global `50%` | `-37.924 dB` | `-37.933 dB` | `+0.19292 dB` | `+1.2783 dB` | `1075` | `1075` | `OK` |
+| Iterative global `60%` | `-37.809 dB` | `-37.827 dB` | `+0.086876 dB` | `+1.1723 dB` | `1290` | `860` | `OK` |
+
+Interpretation:
+
+- This seed `42` run confirms the previous seed `45` trend from `results/pruning_sweeps/20260503_1727`.
+- It does not overwrite or relabel the seed `45` result; both runs should remain distinct in the index.
+- The best practical region is a `30%`-`40%` sparsity plateau.
+- `40%` is the current main candidate because it gives practically the same NMSE as `30%` while pruning more weights.
+- `50%` remains the balanced compression/performance candidate.
+- `60%` remains above dense and GMP in this run, but it is not the main candidate because degradation starts to appear compared with `30%`-`40%`.
+- Layer-wise pruning remains not selected as the main route.
+
+---
 
 ### 2026-05-03 Official dense-first iterative global pruning with 40% checkpoint
 

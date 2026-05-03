@@ -181,7 +181,9 @@ Nota de resultados actuales:
 
 - El sweep global iterativo es actualmente la mejor estrategia de pruning documentada.
 - La corrida oficial `results/pruning_sweeps/20260503_1727` ya incluye `40%` como checkpoint objetivo.
-- En esa corrida, `40%` es el candidato de mejor rendimiento (`-37.968 dB` TEST NMSE), `50%` es el candidato equilibrado de compresión/rendimiento, y `60%` sigue por encima del denso pero con una ganancia pequeña.
+- La corrida de confirmacion `results/pruning_sweeps/20260503_1842` con `seed = 42` es una ejecucion separada de la corrida `seed = 45` en `results/pruning_sweeps/20260503_1727`, y confirma la misma tendencia: la mejor zona practica es la meseta `30%`-`40%`.
+- `40%` es el candidato principal actual porque mantiene NMSE practicamente igual a `30%` y poda mas pesos; `50%` sigue como candidato equilibrado de compresion/rendimiento.
+- `60%` permanece por encima del denso y GMP en la confirmacion `seed = 42`, pero no es el candidato principal porque empieza a degradar frente a `30%`-`40%`.
 
 ---
 
