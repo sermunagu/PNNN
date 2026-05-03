@@ -1284,6 +1284,38 @@ Comando manual para Sergi:
 
 ---
 
+### 2026-05-03 — Documentación del activation sweep N25 50% pruning
+
+Objetivo:
+- Documentar el sweep `results/activation_sweeps/20260503_0328`, que compara ELU, tanh, sigmoid y leakyReLU con arquitectura N25 y pruning global fijo al `50%`.
+
+Archivos modificados:
+- `docs/EXPERIMENTS_LOG.md`
+- `docs/RESULTS_INDEX.md`
+- `docs/PROJECT_LOG.md`
+
+Cambios realizados:
+- Se registraron configuración, tabla compacta e interpretación del activation sweep.
+- Se documentó que, para esta medida/configuración, ELU es la mejor activación probada, con NMSE TEST `-37.533 dB`.
+- Se registró que leakyReLU (`-37.062 dB`), sigmoid (`-37.031 dB`) y tanh (`-36.901 dB`) no deben promoverse sobre ELU con estos datos.
+- Se dejó claro que todas las activaciones superan a GMP justo pinv, pero con margen mucho mayor para ELU (`+0.902 dB`) que para tanh (`+0.270 dB`).
+- Se mantuvo ACPR como `INVALID_CONFIG` pendiente de channel bandwidth/spacing.
+- Se documentó EVM como EVM temporal normalizada, no EVM 5G NR demodulada.
+- No se modificó código ni artefactos bajo `results/`.
+
+Comandos ejecutados por Codex:
+- Inspección ligera de `results/activation_sweeps/20260503_0328/sweep_config.txt`.
+- Inspección ligera de `results/activation_sweeps/20260503_0328/sweep_summary_compact*.csv`.
+- Checks Git ligeros.
+
+Resultados:
+- No se ejecutaron entrenamientos.
+- No se ejecutaron inferencias.
+- No se ejecutaron sweeps MATLAB.
+- No se modificaron `measurements/`, `results/`, `generated_outputs/`, `.mat`, `.fig`, `deploy_package.mat` ni artefactos generados.
+
+---
+
 ## Plantilla para futuras entradas
 
 Copiar y rellenar esta plantilla después de cada intervención relevante:

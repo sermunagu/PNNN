@@ -35,10 +35,85 @@ Regla práctica: si una entrada no cabe razonablemente en una pantalla, debe res
 
 | Fecha | Medida | Experimento | Decisión / conclusión |
 |---|---|---|---|
+| 2026-05-03 | `experiment20260429T134032_xy` | Activation sweep al 50% pruning | Para esta medida/configuración, ELU es la mejor activación probada en el candidato N25 50% pruned; ACPR sigue inválido. |
 | 2026-05-03 | `experiment20260429T134032_xy` | N25 ELU seed 45, sweep rápido 150 épocas | Reproduce muy cerca el sweep de 300 épocas; la pérdida máxima es menor de `0.1 dB`, pero el entrenamiento terminó por `Max epochs completed`, no por early stopping. |
 | 2026-05-03 | `experiment20260429T134032_xy` | Estabilidad N25 ELU seed 45 | La seed 45 no confirma mejora NMSE por pruning; 30% y 50% mantienen degradación baja y siguen por encima de GMP justo pinv. |
 | 2026-05-03 | `experiment20260429T134032_xy` | Sweep N25 ELU con pruning global | Para N25 ELU, el 30% da el mejor NMSE TEST y el 50% es el mejor compromiso complejidad/rendimiento; ACPR queda pendiente por configuración de ancho de canal. |
 | 2026-04-29/30 | `experiment20260429T134032_xy` | Baseline PNNN vs pruning 30% | El pruning global al 30% no degrada; mejora muy ligeramente el NMSE TEST y mantiene ventaja clara frente a GMP. |
+
+---
+
+## 20260503_0328 — Activation sweep at 50% pruning
+
+**Medida:** `experiment20260429T134032_xy`
+
+**Carpeta del sweep:** `results/activation_sweeps/20260503_0328`
+
+`results/` no se versiona; este resultado queda documentado por ruta local del sweep, no por incluir ficheros `.mat` o artefactos generados en Git.
+
+**Objetivo:** comparar funciones de activación para el candidato PNNN sparse balanceado actual, manteniendo arquitectura, medida y pruning global al `50%` fijos.
+
+**Descripción:** `mappingMode = xy_forward`. En la convención local del proyecto, `X` es la entrada del bloque modelado e `Y` su salida, por lo que `xy_forward` no debe reinterpretarse automáticamente como PA-forward.
+
+**Configuración:**
+
+- `model = PNNN phaseNorm full`
+- `M = 13`
+- `orders = [1 3 5 7]`
+- `inputDim = 84`
+- `numNeurons = 25`
+- split `70%` train, `15%` val, `15%` test
+- `seed = 45`
+- activaciones: `["elu", "tanh", "sigmoid", "leakyrelu"]`
+- sparsity fija: `50%`
+- pruning global por magnitud, solo pesos
+- bias protegido: `includeBias = 0`
+- `freezePruned = 1`
+- fine-tuning posterior al pruning: `20` épocas
+- pesos restantes: `1075` en todas las corridas
+- pesos podados: `1075` en todas las corridas
+
+**GMP justo mismo split:**
+
+| Referencia | NMSE TEST |
+|---|---:|
+| GMP justo pinv | `-36.63 dB` |
+| GMP justo ridge `1e-4` | `-36.38 dB` |
+
+**Resultados compactos:**
+
+| Activation | Sparsity | NMSE Train+Val | NMSE Test | Gain vs GMP justo pinv | PAPR Test | EVM Test dB | EVM Test % | Remaining | Mask |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---|
+| ELU | `50%` | `-37.616 dB` | `-37.533 dB` | `+0.902 dB` | `14.056 dB` | `-37.533 dB` | `1.328%` | `1075` | `OK` |
+| tanh | `50%` | `-36.994 dB` | `-36.901 dB` | `+0.270 dB` | `13.881 dB` | `-36.901 dB` | `1.429%` | `1075` | `OK` |
+| sigmoid | `50%` | `-37.049 dB` | `-37.031 dB` | `+0.400 dB` | `13.806 dB` | `-37.031 dB` | `1.408%` | `1075` | `OK` |
+| leakyReLU | `50%` | `-37.141 dB` | `-37.062 dB` | `+0.431 dB` | `14.020 dB` | `-37.062 dB` | `1.403%` | `1075` | `OK` |
+
+**Interpretación:**
+
+- Para esta medida/configuración, ELU es la mejor activación probada.
+- ELU alcanza el mejor NMSE TEST: `-37.533 dB`.
+- leakyReLU queda segunda, con `-37.062 dB`.
+- sigmoid queda cerca de leakyReLU, con `-37.031 dB`.
+- tanh es la más débil de las cuatro en esta corrida, con `-36.901 dB`.
+- Todas las activaciones superan a GMP justo pinv, pero ELU lo supera por aproximadamente `+0.90 dB`, mientras que tanh solo por aproximadamente `+0.27 dB`.
+- El resultado apoya mantener ELU como activación principal/default para el candidato PNNN N25 con `50%` pruning.
+- tanh, sigmoid y leakyReLU no deben promoverse por encima de ELU basándose en este sweep.
+- La comparación está hecha a sparsity fija `50%`, por lo que la columna `Gain vs 0%` no es significativa/no está disponible en este sweep de activaciones.
+- Es una sola medida y una sola seed; no se debe vender como superioridad universal de ELU. La conclusión correcta es que, para esta medida/configuración, ELU es la mejor activación probada.
+
+**Limitaciones:**
+
+- ACPR permanece en `INVALID_CONFIG` porque falta configurar channel bandwidth/spacing. No usar ACPR para conclusiones.
+- EVM es EVM temporal normalizada sobre las mismas señales temporales, no EVM 5G NR demodulada; por eso sigue de cerca al NMSE.
+
+**Decisión:**
+
+Mantener ELU como activación default/principal para el candidato N25 PNNN con `50%` pruning. No promover tanh, sigmoid ni leakyReLU sobre ELU con estos datos.
+
+**Referencia detallada:**
+
+Ver `docs/RESULTS_INDEX.md`.
 
 ---
 

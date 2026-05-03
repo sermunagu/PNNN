@@ -25,10 +25,61 @@ Este fichero sirve para localizar rápidamente:
 | 2026-05-03 | `experiment20260429T134032_xy` | Important current result: N25 ELU global pruning sweep | Best `30%`: `-37.904 dB`; balanced `50%`: `-37.750 dB` | Best `30%`: `-37.905 dB`; balanced `50%`: `-37.744 dB` | Sweep folder: `results/pruning_sweeps/20260503_0013` | No inference output recorded | `yhat` when inference is run |
 | 2026-05-03 | `experiment20260429T134032_xy` | N25 ELU pruning stability sweep, seed 45 | Dense: `-37.896 dB`; `30%`: `-37.830 dB`; `50%`: `-37.595 dB` | Dense: `-37.804 dB`; `30%`: `-37.732 dB`; `50%`: `-37.538 dB` | Sweep folder: `results/pruning_sweeps/20260503_0206` | No inference output recorded | `yhat` when inference is run |
 | 2026-05-03 | `experiment20260429T134032_xy` | N25 ELU seed 45 pruning sweep, 150 initial epochs | Dense: `-37.815 dB`; `30%`: `-37.776 dB`; `50%`: `-37.592 dB` | Dense: `-37.714 dB`; `30%`: `-37.684 dB`; `50%`: `-37.524 dB` | Sweep folder: `results/pruning_sweeps/20260503_0300` | No inference output recorded | `yhat` when inference is run |
+| 2026-05-03 | `experiment20260429T134032_xy` | N25 50% pruning activation sweep | Best activation ELU: `-37.616 dB`; leakyReLU: `-37.141 dB`; sigmoid: `-37.049 dB`; tanh: `-36.994 dB` | Best activation ELU: `-37.533 dB`; leakyReLU: `-37.062 dB`; sigmoid: `-37.031 dB`; tanh: `-36.901 dB` | Sweep folder: `results/activation_sweeps/20260503_0328` | No inference output recorded | `yhat` when inference is run |
 
 ---
 
 ## Resultados asociados a `experiment20260429T134032_xy`
+
+### 2026-05-03 N25 50% pruning activation sweep
+
+- Sweep folder: `results/activation_sweeps/20260503_0328`
+- `results/` is not versioned; this result is indexed by local sweep path, not by committing `.mat` or generated result artifacts.
+- Purpose: compare activation functions for the current balanced sparse PNNN candidate under fixed `50%` global magnitude pruning.
+- Measurement: `experiment20260429T134032_xy`
+- `mappingMode = xy_forward`
+- Local X/Y convention applies: `X` is the input of the modeled block and `Y` is its output; `xy_forward` is not automatically PA-forward.
+- Model: PNNN `phaseNorm full`
+- `M = 13`
+- `orders = [1 3 5 7]`
+- `inputDim = 84`
+- `numNeurons = 25`
+- Split: train `70%`, val `15%`, test `15%`, `seed = 45`
+- Activation list: `["elu", "tanh", "sigmoid", "leakyrelu"]`
+- Sparsity: `50%`
+- Pruning: global magnitude, weights only, bias protected (`includeBias = 0`).
+- `freezePruned = 1`.
+- Fine-tuning after pruning: `20` epochs.
+- Remaining weights: `1075` for all activation runs.
+- Pruned weights: `1075` for all activation runs.
+- GMP justo same split: TEST pinv `-36.63 dB`, TEST ridge `1e-4` `-36.38 dB`.
+
+| Activation | Sparsity | NMSE Train+Val | NMSE Test | Gain vs GMP justo pinv | PAPR Test | EVM Test dB | EVM Test % | Remaining | Mask |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---|
+| ELU | `50%` | `-37.616 dB` | `-37.533 dB` | `+0.902 dB` | `14.056 dB` | `-37.533 dB` | `1.328%` | `1075` | `OK` |
+| tanh | `50%` | `-36.994 dB` | `-36.901 dB` | `+0.270 dB` | `13.881 dB` | `-36.901 dB` | `1.429%` | `1075` | `OK` |
+| sigmoid | `50%` | `-37.049 dB` | `-37.031 dB` | `+0.400 dB` | `13.806 dB` | `-37.031 dB` | `1.408%` | `1075` | `OK` |
+| leakyReLU | `50%` | `-37.141 dB` | `-37.062 dB` | `+0.431 dB` | `14.020 dB` | `-37.062 dB` | `1.403%` | `1075` | `OK` |
+
+Interpretation:
+
+- For this measurement/configuration, ELU is the best activation tested.
+- ELU reaches the best TEST NMSE: `-37.533 dB`.
+- leakyReLU is second with `-37.062 dB`.
+- sigmoid is close to leakyReLU with `-37.031 dB`.
+- tanh is the weakest of the four in this run with `-36.901 dB`.
+- All activations still beat GMP justo pinv, but ELU beats it by about `+0.90 dB`, while tanh only beats it by about `+0.27 dB`.
+- This supports keeping ELU as the default/main activation for the N25 `50%`-pruned PNNN candidate.
+- tanh, sigmoid, and leakyReLU should not be promoted over ELU based on this sweep.
+- The comparison uses fixed `50%` sparsity, so `Gain vs 0%` is not meaningful/available in this activation sweep.
+- This is one seed and one measurement; do not claim universal activation superiority.
+
+Limitations:
+
+- ACPR remains `INVALID_CONFIG` because channel bandwidth/spacing is not configured. Do not use ACPR for conclusions.
+- EVM is time-domain normalized EVM over the same temporal signals, not demodulated 5G NR EVM; it follows NMSE closely for that reason.
+
+---
 
 ### 2026-05-03 N25 ELU pruning sweep, seed 45, 150 initial epochs
 
