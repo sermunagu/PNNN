@@ -27,37 +27,39 @@ Este fichero sirve para localizar rápidamente:
 | 2026-05-03 | `experiment20260429T134032_xy` | N25 ELU seed 45 pruning sweep, 150 initial epochs | Dense: `-37.815 dB`; `30%`: `-37.776 dB`; `50%`: `-37.592 dB` | Dense: `-37.714 dB`; `30%`: `-37.684 dB`; `50%`: `-37.524 dB` | Sweep folder: `results/pruning_sweeps/20260503_0300` | No inference output recorded | `yhat` when inference is run |
 | 2026-05-03 | `experiment20260429T134032_xy` | N25 50% pruning activation sweep | Best activation ELU: `-37.616 dB`; leakyReLU: `-37.141 dB`; sigmoid: `-37.049 dB`; tanh: `-36.994 dB` | Best activation ELU: `-37.533 dB`; leakyReLU: `-37.062 dB`; sigmoid: `-37.031 dB`; tanh: `-36.901 dB` | Sweep folder: `results/activation_sweeps/20260503_0328` | No inference output recorded | `yhat` when inference is run |
 | 2026-05-03 | `experiment20260429T134032_xy` | N25 ELU dense-first pruning sweep | Dense: `-37.737 dB`; `30%`: `-37.770 dB`; `50%`: `-37.501 dB`; `60%`: `-37.183 dB` | Dense: `-37.646 dB`; best `30%`: `-37.679 dB`; `50%`: `-37.411 dB`; `60%`: `-37.098 dB` | Sweep folder: `results/pruning_sweeps/20260503_1105`; dense deploy source in `sparsity_000` | No inference output recorded | `yhat` when inference is run |
-| 2026-05-03 | `experiment20260429T134032_xy` | Current best pruning strategy: N25 ELU global iterative pruning | Dense: not provided; checkpoints documented by TEST only | Dense: `≈ -37.646 dB`; `30%`: `≈ -37.941 dB`; `40%` intermediate: `≈ -37.959 dB`; `50%`: `≈ -37.850 dB`; `60%`: `≈ -37.687 dB` | Local generated sweep summaries under `results/`; artifacts not versioned | No inference output recorded | `yhat` when inference is run |
+| 2026-05-03 | `experiment20260429T134032_xy` | Current best pruning strategy: N25 ELU dense-first iterative global pruning | Dense: not provided; documented by TEST and gains | Dense: `-37.646 dB`; `30%`: `-37.941 dB`; official `40%`: `-37.968 dB`; `50%`: `-37.862 dB`; `60%`: `-37.734 dB` | Sweep folder: `results/pruning_sweeps/20260503_1727`; generated artifacts not versioned | No inference output recorded | `yhat` when inference is run |
 | 2026-05-03 | `experiment20260429T134032_xy` | N25 ELU layer-wise dense-first pruning sweep | Dense: not provided; documented by TEST only | Dense: `≈ -37.646 dB`; `30%`: `≈ -37.580 dB`; `50%`: `≈ -37.142 dB`; `60%`: `≈ -35.822 dB` | Local generated sweep summaries under `results/`; artifacts not versioned | No inference output recorded | `yhat` when inference is run |
 
 ---
 
 ## Resultados asociados a `experiment20260429T134032_xy`
 
-### 2026-05-03 Current pruning comparison: global iterative vs layer-wise dense-first
+### 2026-05-03 Official dense-first iterative global pruning with 40% checkpoint
 
-- Result source: local generated sweep summaries under `results/`; generated artifacts are not versioned and were not modified for this documentation update.
-- Exact result folders are not recorded in this entry because only consolidated numbers were provided for documentation.
+- Sweep folder: `results/pruning_sweeps/20260503_1727`
+- `results/` is not versioned; this result is indexed by local sweep path, not by committing `.mat`, `.fig`, deploy packages, CSV/XLSX/MAT summaries, or generated result artifacts.
+- Script family: dense-first iterative pruning (`experiments/run_PNNN_iterative_pruning_sweep_from_dense_first.m`).
 - Measurement: `experiment20260429T134032_xy`
 - `mappingMode = xy_forward`
 - Local X/Y convention applies: `X` is the input of the modeled block and `Y` is its output; `xy_forward` is not automatically PA-forward.
 - Model: PNNN `phaseNorm full`, N25, ELU.
 - `M = 13`
 - `orders = [1 3 5 7]`
+- Split: train `70%`, val `15%`, test `15%`, `seed = 45`
 - ACPR remains `INVALID_CONFIG` pending channel bandwidth/spacing configuration.
 - EVM remains time-domain normalized EVM, not demodulated 5G NR EVM.
 
-Global iterative pruning:
+Official iterative global pruning checkpoints:
 
-| Point | NMSE TEST |
-|---|---:|
-| Dense `0%` | `≈ -37.646 dB` |
-| `30%` | `≈ -37.941 dB` |
-| `40%` intermediate | `≈ -37.959 dB` |
-| `50%` | `≈ -37.850 dB` |
-| `60%` | `≈ -37.687 dB` |
+| Sparsity | NMSE TEST | Gain vs dense | Gain vs GMP justo pinv | Pruned | Remaining | Mask |
+|---:|---:|---:|---:|---:|---:|:---|
+| Dense `0%` | `-37.646 dB` | `0 dB` | `+1.0149 dB` | `0` | `2150` | `N/A` |
+| Iterative global `30%` | `-37.941 dB` | `+0.29518 dB` | `+1.3101 dB` | `645` | `1505` | `OK` |
+| Iterative global `40%` | `-37.968 dB` | `+0.32203 dB` | `+1.3369 dB` | `860` | `1290` | `OK` |
+| Iterative global `50%` | `-37.862 dB` | `+0.21568 dB` | `+1.2306 dB` | `1075` | `1075` | `OK` |
+| Iterative global `60%` | `-37.734 dB` | `+0.087826 dB` | `+1.1027 dB` | `1290` | `860` | `OK` |
 
-Layer-wise dense-first pruning:
+Layer-wise dense-first comparison retained from the previous documented run:
 
 | Point | NMSE TEST |
 |---|---:|
@@ -68,12 +70,12 @@ Layer-wise dense-first pruning:
 
 Interpretation:
 
-- Global iterative pruning is currently the best pruning strategy documented for this N25 ELU configuration.
-- The best observed TEST NMSE is the global iterative `40%` intermediate point at approximately `-37.959 dB`.
-- Global iterative `30%` and `50%` are also strong, at approximately `-37.941 dB` and `-37.850 dB`.
-- Global iterative `60%` remains close to the dense baseline at approximately `-37.687 dB`.
+- Iterative global pruning is currently the best pruning strategy documented for this N25 ELU configuration.
+- The official `40%` checkpoint is the current best performance candidate, with `-37.968 dB` TEST NMSE and `+0.32203 dB` gain versus dense.
+- The official `50%` checkpoint is the balanced compression candidate, with `-37.862 dB` TEST NMSE, `+0.21568 dB` gain versus dense, and `1075` remaining prunable weights.
+- The official `60%` checkpoint remains above dense, but is less attractive because the gain is small at `+0.087826 dB`.
 - Layer-wise dense-first pruning is not selected as the main candidate in its current form because it degrades more strongly, especially at `50%` and `60%`.
-- Recommended next confirmation run: add `40%` to the official iterative sparsity list so it is reported as a target checkpoint, not only as an intermediate step. This is a docs-only recommendation; `config/getPNNNConfig.m` was not changed for this recommendation.
+- Earlier documentation treated `40%` as not yet official; that is now obsolete because `40%` is included in `results/pruning_sweeps/20260503_1727`.
 
 ---
 

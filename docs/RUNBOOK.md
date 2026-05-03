@@ -180,8 +180,8 @@ Usar este script cuando se quiera probar si llegar a una sparsity por pasos grad
 Nota de resultados actuales:
 
 - El sweep global iterativo es actualmente la mejor estrategia de pruning documentada.
-- El punto `40%` intermedio fue el mejor observado en NMSE TEST, por lo que conviene añadir `40%` a `cfg.sweep.sparsityList` en la próxima corrida de confirmación si se quiere que aparezca como checkpoint oficial.
-- Esta es una recomendación operativa; no cambiar `cfg.sweep.sparsityList` sin decidir antes la corrida que se quiere lanzar.
+- La corrida oficial `results/pruning_sweeps/20260503_1727` ya incluye `40%` como checkpoint objetivo.
+- En esa corrida, `40%` es el candidato de mejor rendimiento (`-37.968 dB` TEST NMSE), `50%` es el candidato equilibrado de compresión/rendimiento, y `60%` sigue por encima del denso pero con una ganancia pequeña.
 
 ---
 

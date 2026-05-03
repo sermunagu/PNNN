@@ -1439,12 +1439,44 @@ Changes made:
 - Documented global iterative TEST NMSE values: dense `0%` approximately `-37.646 dB`, `30%` approximately `-37.941 dB`, `40%` intermediate approximately `-37.959 dB`, `50%` approximately `-37.850 dB`, and `60%` approximately `-37.687 dB`.
 - Documented layer-wise dense-first TEST NMSE values: dense `0%` approximately `-37.646 dB`, `30%` approximately `-37.580 dB`, `50%` approximately `-37.142 dB`, and `60%` approximately `-35.822 dB`.
 - Recorded that layer-wise pruning is not selected as the main candidate in its current form because it degrades more strongly, especially at `50%` and `60%`.
-- Added a docs-only recommendation to include `40%` in the official iterative sparsity list for the next confirmation run.
+- Earlier docs treated `40%` as not yet official; that note was later superseded by the official `20260503_1727` run, which includes `40%` as a target checkpoint.
 - Kept ACPR documented as `INVALID_CONFIG` pending channel bandwidth/spacing configuration.
 - Kept EVM documented as time-domain normalized EVM, not demodulated 5G NR EVM.
 
 Commands executed by Codex:
 - Lightweight Git status and source/documentation inspection.
+- Static diff checks only.
+
+Results:
+- No MATLAB training was executed.
+- No MATLAB inference was executed.
+- No pruning, activation, iterative, layer-wise, or dense-first sweep script was executed by Codex.
+- No `measurements/`, `results/`, `generated_outputs/`, `.mat`, `.fig`, `deploy_package.mat`, or generated CSV/XLSX/MAT result artifact was modified.
+
+---
+
+### 2026-05-03 — Official iterative global pruning 40 percent result documented
+
+Objective:
+- Document Sergi's official dense-first iterative global pruning run after adding `40%` to the target checkpoint list.
+
+Files modified:
+- `docs/EXPERIMENTS_LOG.md`
+- `docs/RESULTS_INDEX.md`
+- `docs/RUNBOOK.md`
+- `docs/PROJECT_LOG.md`
+
+Changes made:
+- Added `results/pruning_sweeps/20260503_1727` as the official dense-first iterative global pruning result.
+- Documented the official TEST NMSE checkpoints: dense `0%` `-37.646 dB`, `30%` `-37.941 dB`, `40%` `-37.968 dB`, `50%` `-37.862 dB`, and `60%` `-37.734 dB`.
+- Recorded `40%` as the current best performance candidate and `50%` as the balanced compression/performance candidate.
+- Replaced stale documentation that treated `40%` as a future confirmation target with the official `40%` checkpoint result.
+- Kept layer-wise pruning documented as not selected for the main route because previous layer-wise dense-first results degraded at `50%`-`60%`.
+- Kept ACPR documented as `INVALID_CONFIG` pending channel bandwidth/spacing configuration.
+- Kept EVM documented as time-domain normalized EVM, not demodulated 5G NR EVM.
+
+Commands executed by Codex:
+- Lightweight Git status and documentation inspection.
 - Static diff checks only.
 
 Results:

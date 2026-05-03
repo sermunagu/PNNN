@@ -35,7 +35,7 @@ Regla práctica: si una entrada no cabe razonablemente en una pantalla, debe res
 
 | Fecha | Medida | Experimento | Decisión / conclusión |
 |---|---|---|---|
-| 2026-05-03 | `experiment20260429T134032_xy` | Global iterative vs layer-wise dense-first pruning | Global iterative pruning is currently the best pruning strategy; layer-wise pruning is not selected because it degrades more strongly, especially at `50%`-`60%`. |
+| 2026-05-03 | `experiment20260429T134032_xy` | Official dense-first iterative global pruning with 40% checkpoint | Iterative global `40%` is the current best performance candidate; `50%` remains the balanced compression candidate; layer-wise pruning is not selected. |
 | 2026-05-03 | `experiment20260429T134032_xy` | Dense-first N25 ELU pruning sweep | The dense-first flow works as intended; `30%` is the best TEST NMSE point in this sweep, `50%` is the stronger compression/performance trade-off, and `60%` remains above GMP justo pinv. |
 | 2026-05-03 | `experiment20260429T134032_xy` | Activation sweep al 50% pruning | Para esta medida/configuración, ELU es la mejor activación probada en el candidato N25 50% pruned; ACPR sigue inválido. |
 | 2026-05-03 | `experiment20260429T134032_xy` | N25 ELU seed 45, sweep rápido 150 épocas | Reproduce muy cerca el sweep de 300 épocas; la pérdida máxima es menor de `0.1 dB`, pero el entrenamiento terminó por `Max epochs completed`, no por early stopping. |
@@ -45,43 +45,40 @@ Regla práctica: si una entrada no cabe razonablemente en una pantalla, debe res
 
 ---
 
-## 2026-05-03 — Global iterative vs layer-wise dense-first pruning
+## 20260503_1727 — Official dense-first iterative global pruning with 40% checkpoint
 
 **Measurement:** `experiment20260429T134032_xy`
 
-**Result source:** local generated sweep summaries under `results/`; those generated artifacts are not versioned in Git and were not modified for this documentation update. The exact result folders are not recorded in this entry because only the consolidated numbers were provided for documentation.
+**Sweep folder:** `results/pruning_sweeps/20260503_1727`
 
-**Purpose:** compare the new dense-first pruning strategies after the global iterative sweep produced strong results and the layer-wise dense-first sweep completed.
+`results/` is not versioned; this sweep is documented by its local result path, not by committing `.mat`, `.fig`, deploy packages, CSV/XLSX/MAT summaries, or other generated result artifacts.
 
-**Common setup:** N25 ELU PNNN with phase-normalized `full` features, `M = 13`, `orders = [1 3 5 7]`, `mappingMode = xy_forward`, and the local PNNN X/Y convention. `xy_forward` must not be reinterpreted automatically as physical PA-forward modeling.
+**Purpose:** document the official dense-first iterative global pruning run after adding `40%` to the target checkpoint list.
 
-**Global iterative pruning results:**
+**Configuration:** N25 ELU PNNN with phase-normalized `full` features, `M = 13`, `orders = [1 3 5 7]`, `mappingMode = xy_forward`, and split `70%` train, `15%` val, `15%` test with `seed = 45`. Under the local PNNN X/Y convention, `X` is the input of the modeled block and `Y` is its output; `xy_forward` must not be reinterpreted automatically as physical PA-forward modeling.
 
-| Point | NMSE TEST |
-|---|---:|
-| Dense `0%` | `≈ -37.646 dB` |
-| `30%` | `≈ -37.941 dB` |
-| `40%` intermediate | `≈ -37.959 dB` |
-| `50%` | `≈ -37.850 dB` |
-| `60%` | `≈ -37.687 dB` |
+**Final compact summary:**
 
-**Layer-wise dense-first results:**
+| Sparsity | NMSE TEST | Gain vs dense | Gain vs GMP justo pinv | Pruned | Remaining | Mask |
+|---:|---:|---:|---:|---:|---:|:---|
+| Dense `0%` | `-37.646 dB` | `0 dB` | `+1.0149 dB` | `0` | `2150` | `N/A` |
+| Iterative global `30%` | `-37.941 dB` | `+0.29518 dB` | `+1.3101 dB` | `645` | `1505` | `OK` |
+| Iterative global `40%` | `-37.968 dB` | `+0.32203 dB` | `+1.3369 dB` | `860` | `1290` | `OK` |
+| Iterative global `50%` | `-37.862 dB` | `+0.21568 dB` | `+1.2306 dB` | `1075` | `1075` | `OK` |
+| Iterative global `60%` | `-37.734 dB` | `+0.087826 dB` | `+1.1027 dB` | `1290` | `860` | `OK` |
 
-| Point | NMSE TEST |
-|---|---:|
-| Dense `0%` | `≈ -37.646 dB` |
-| `30%` | `≈ -37.580 dB` |
-| `50%` | `≈ -37.142 dB` |
-| `60%` | `≈ -35.822 dB` |
+**GMP reference:** GMP justo pinv TEST is implied by the reported gains as approximately `-36.63 dB`; prior same-split ridge `1e-4` reference is `-36.38 dB`.
+
+**Layer-wise comparison retained from the previous run:** dense `0%` approximately `-37.646 dB`, layer-wise dense-first `30%` approximately `-37.580 dB`, `50%` approximately `-37.142 dB`, and `60%` approximately `-35.822 dB`.
 
 **Interpretation:**
 
-- Global iterative pruning is currently the best pruning strategy for this N25 ELU configuration.
-- The global iterative `40%` intermediate point is the best observed NMSE TEST point in this comparison at approximately `-37.959 dB`.
-- The requested global iterative checkpoints remain strong through `60%`, with `60%` still approximately matching or slightly improving the dense baseline.
-- Layer-wise dense-first pruning is not selected as the main candidate in its current form because it degrades more strongly, especially at `50%` and `60%`.
-- The layer-wise `60%` point drops to approximately `-35.822 dB`, making it materially worse than global iterative pruning and worse than the dense baseline.
-- Recommendation for the next confirmation run: add `40%` to the official iterative sparsity list so it is reported as a requested checkpoint rather than only an intermediate point. This is a documentation recommendation only; config was not changed in this task.
+- Iterative global pruning is currently the best pruning strategy documented for this N25 ELU configuration.
+- The official `40%` checkpoint is the current best performance candidate, with `-37.968 dB` TEST NMSE and `+0.32203 dB` gain versus the dense baseline.
+- The official `50%` checkpoint remains the balanced compression candidate, with `-37.862 dB` TEST NMSE, `+0.21568 dB` gain versus dense, and half of the prunable weights remaining.
+- The official `60%` checkpoint remains above dense, but is less attractive because its gain is small at `+0.087826 dB`.
+- Layer-wise pruning is not selected as the main route because the previous layer-wise dense-first results degraded at `50%`-`60%`.
+- Earlier documentation treated `40%` as not yet official; that is now obsolete because `40%` is included in the official `20260503_1727` result.
 
 **Limitations:**
 
