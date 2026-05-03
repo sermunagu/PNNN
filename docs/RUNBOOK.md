@@ -124,6 +124,8 @@ Solo Sergi, salvo permiso explícito:
 matlab -batch "run('experiments/run_PNNN_pruning_sweep.m')"
 ```
 
+Este es el sweep regular. Si `cfg.warmStart.enabled=true`, la fuente de warm start se resuelve antes de empezar el loop; por tanto, si se usa `cfg.warmStart.useLatestDeploy=true`, el deploy usado debe existir antes del sweep y es externo al sweep actual.
+
 Antes de ejecutarlo:
 
 - revisar `cfg.sweep.sparsityList` en `config/getPNNNConfig.m`;
@@ -135,6 +137,25 @@ Después:
 - mirar `sweep_summary_compact_display.csv`;
 - actualizar `docs/RESULTS_INDEX.md` si hay resultado consolidado;
 - añadir resumen en `docs/EXPERIMENTS_LOG.md` si el sweep decide algo.
+
+---
+
+## Sweep de pruning dense-first
+
+Solo Sergi, salvo permiso explícito:
+
+```powershell
+matlab -batch "run('experiments/run_PNNN_pruning_sweep_from_dense_first.m')"
+```
+
+Uso previsto:
+
+- entrena primero `sparsity_000` dentro del mismo sweep;
+- captura el `deploy_package.mat` generado por esa corrida densa;
+- usa exactamente ese deploy como warm start fijo para todas las sparsities podadas;
+- fuerza `skipInitialTraining=true` en las corridas podadas, de modo que solo aplican pruning y fine-tuning desde el denso común.
+
+Usar este script cuando se quiera comparar sparsities podadas contra una misma red densa generada dentro del propio sweep, evitando que una corrida podada pueda arrancar accidentalmente desde el deploy de otra corrida podada.
 
 ---
 

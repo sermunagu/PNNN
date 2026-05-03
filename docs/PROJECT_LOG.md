@@ -1250,6 +1250,40 @@ Pendiente:
 
 ---
 
+### 2026-05-03 — Script de sweep pruning dense-first
+
+Objetivo:
+- Añadir un sweep alternativo que entrena primero el modelo denso `0%`, captura su `deploy_package.mat` y usa exactamente ese deploy como warm start fijo para todas las sparsities podadas del mismo sweep.
+
+Archivos modificados:
+- `experiments/run_PNNN_pruning_sweep_from_dense_first.m`
+- `docs/RUNBOOK.md`
+- `docs/PROJECT_LOG.md`
+
+Cambios realizados:
+- Se creó `experiments/run_PNNN_pruning_sweep_from_dense_first.m`.
+- El nuevo script mantiene el output bajo `results/pruning_sweeps/<timestamp>/`, con `sparsity_000/`, subcarpetas `sparsity_XXX/`, `GMP_baselines/` y los summaries del sweep.
+- La corrida densa fuerza `cfgOverrides.warmStart.enabled = false` y pruning desactivado.
+- Las corridas podadas fuerzan `cfgOverrides.warmStart.sourceFile` al deploy denso capturado, `useLatestDeploy = false` y `skipInitialTraining = true`.
+- `sweep_config.mat` y `sweep_config.txt` guardan la ruta `denseDeployFile`.
+- `docs/RUNBOOK.md` diferencia el sweep regular, que resuelve warm start antes del loop, del sweep dense-first, que genera el deploy denso dentro del propio sweep.
+- No se cambió el comportamiento de `experiments/run_PNNN_pruning_sweep.m`.
+
+Comandos ejecutados por Codex:
+- Inspección ligera de `experiments/run_PNNN_pruning_sweep.m`, `train_PNNN_offline.m`, `config/getPNNNConfig.m` y documentación.
+- Checks Git ligeros.
+
+Resultados:
+- No se ejecutaron entrenamientos.
+- No se ejecutaron inferencias.
+- No se ejecutaron `train_PNNN_offline.m`, `run_PNNN_pruning_sweep.m`, `run_PNNN_activation_sweep.m` ni el nuevo script.
+- No se modificaron `measurements/`, `results/`, `generated_outputs/`, `.mat`, `.fig`, `deploy_package.mat` ni artefactos generados.
+
+Comando manual para Sergi:
+- `matlab -batch "run('experiments/run_PNNN_pruning_sweep_from_dense_first.m')"`
+
+---
+
 ## Plantilla para futuras entradas
 
 Copiar y rellenar esta plantilla después de cada intervención relevante:
