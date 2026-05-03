@@ -35,11 +35,84 @@ Regla práctica: si una entrada no cabe razonablemente en una pantalla, debe res
 
 | Fecha | Medida | Experimento | Decisión / conclusión |
 |---|---|---|---|
+| 2026-05-03 | `experiment20260429T134032_xy` | Dense-first N25 ELU pruning sweep | The dense-first flow works as intended; `30%` is the best TEST NMSE point in this sweep, `50%` is the stronger compression/performance trade-off, and `60%` remains above GMP justo pinv. |
 | 2026-05-03 | `experiment20260429T134032_xy` | Activation sweep al 50% pruning | Para esta medida/configuración, ELU es la mejor activación probada en el candidato N25 50% pruned; ACPR sigue inválido. |
 | 2026-05-03 | `experiment20260429T134032_xy` | N25 ELU seed 45, sweep rápido 150 épocas | Reproduce muy cerca el sweep de 300 épocas; la pérdida máxima es menor de `0.1 dB`, pero el entrenamiento terminó por `Max epochs completed`, no por early stopping. |
 | 2026-05-03 | `experiment20260429T134032_xy` | Estabilidad N25 ELU seed 45 | La seed 45 no confirma mejora NMSE por pruning; 30% y 50% mantienen degradación baja y siguen por encima de GMP justo pinv. |
 | 2026-05-03 | `experiment20260429T134032_xy` | Sweep N25 ELU con pruning global | Para N25 ELU, el 30% da el mejor NMSE TEST y el 50% es el mejor compromiso complejidad/rendimiento; ACPR queda pendiente por configuración de ancho de canal. |
 | 2026-04-29/30 | `experiment20260429T134032_xy` | Baseline PNNN vs pruning 30% | El pruning global al 30% no degrada; mejora muy ligeramente el NMSE TEST y mantiene ventaja clara frente a GMP. |
+
+---
+
+## 20260503_1105 — Dense-first N25 ELU pruning sweep
+
+**Measurement:** `experiment20260429T134032_xy`
+
+**Sweep folder:** `results/pruning_sweeps/20260503_1105`
+
+`results/` is not versioned; this sweep is documented by its local result path, not by committing `.mat`, `.fig`, CSV/XLSX/MAT result artifacts, or generated deploy packages.
+
+**Script:** `experiments/run_PNNN_pruning_sweep_from_dense_first.m`
+
+**Purpose:** evaluate the dense-first pruning workflow, where one dense `0%` model is trained first and the exact deploy package from that dense run is reused as the fixed warm-start source for all pruned sparsities in the same sweep.
+
+**Description:** `mappingMode = xy_forward`. Under the local PNNN convention, `X` is the input of the modeled block and `Y` is its output; `xy_forward` must not be interpreted automatically as PA-forward modeling.
+
+**Configuration:**
+
+- `model = PNNN phaseNorm full`
+- `M = 13`
+- `orders = [1 3 5 7]`
+- `inputDim = 84`
+- `numNeurons = 25`
+- `activation = ELU`
+- split `70%` train, `15%` val, `15%` test
+- `seed = 45`
+- dense warm-start source for pruned runs: `results/pruning_sweeps/20260503_1105/sparsity_000/NN_DPD_M13O1357_N25_phaseNorm_full_elu_experiment20260429T134032_xy_20260503_1105_offline/deploy_package.mat`
+- for pruned runs, `warmStart.sourceFile` is the dense deploy from `sparsity_000`
+- `warmStart.useLatestDeploy = false`
+- `warmStart.skipInitialTraining = true`
+- `warmStart.reuseNormStats = true`
+- initial `trainnet` is skipped for pruned runs
+- only pruning plus fine-tuning is performed for pruned runs
+
+**GMP justo same split:**
+
+| Reference | NMSE TEST |
+|---|---:|
+| GMP justo pinv | `-36.63 dB` |
+| GMP justo ridge `1e-4` | `-36.38 dB` |
+
+**Dense-first compact results:**
+
+| Sparsity | NMSE Train+Val (dB) | NMSE Test (dB) | Gain vs 0% (dB) | Gain vs GMP justo pinv (dB) | PAPR Test (dB) | EVM Test (dB) | EVM Test (%) | Pruned | Remaining | Mask |
+|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|:---|
+| `0%` | `-37.737` | `-37.646` | `0` | `1.0149` | `14.073` | `-37.646` | `1.3113` | `0` | `2150` | `N/A` |
+| `30%` | `-37.770` | `-37.679` | `+0.033325` | `1.0483` | `14.079` | `-37.679` | `1.3063` | `645` | `1505` | `OK` |
+| `50%` | `-37.501` | `-37.411` | `-0.23507` | `0.77987` | `14.073` | `-37.411` | `1.3473` | `1075` | `1075` | `OK` |
+| `60%` | `-37.183` | `-37.098` | `-0.54778` | `0.46715` | `14.098` | `-37.098` | `1.3967` | `1290` | `860` | `OK` |
+
+**Interpretation:**
+
+- The dense-first implementation is working as intended: one dense model is trained first, and all sparse runs reuse exactly that dense deploy package.
+- `30%` sparsity slightly improves the dense baseline by about `+0.033 dB` on TEST while pruning `645/2150` weights and keeping `1505` weights.
+- `50%` sparsity loses about `0.235 dB` versus the dense model but still beats GMP justo pinv by about `+0.78 dB` with only `1075` remaining weights.
+- `60%` sparsity is more aggressive: it loses about `0.548 dB` versus dense, but still beats GMP justo pinv by about `+0.47 dB` with `860` remaining weights.
+- This result supports `30%` as the best dense-first performance point in this sweep, `50%` as a stronger compression/performance trade-off, and `60%` as aggressive compression that remains above GMP.
+- Compared with the previous regular pruning sweep, this dense-first flow is experimentally cleaner because all sparse configurations start from the same dense model rather than independently retraining a dense model per sparsity.
+
+**Limitations:**
+
+- ACPR remains `INVALID_CONFIG` because channel bandwidth/spacing is not configured. Do not use ACPR for conclusions.
+- EVM is time-domain normalized EVM over the same temporal signals, not demodulated 5G NR EVM.
+
+**Decision:**
+
+Use the dense-first run as the cleaner pruning comparison for this N25 ELU configuration: `30%` is the best NMSE point in this sweep, `50%` is the main compression/performance candidate, and `60%` is a viable aggressive-compression point that still beats GMP justo pinv.
+
+**Reference detailed index:**
+
+See `docs/RESULTS_INDEX.md`.
 
 ---
 

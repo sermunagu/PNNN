@@ -26,10 +26,57 @@ Este fichero sirve para localizar rápidamente:
 | 2026-05-03 | `experiment20260429T134032_xy` | N25 ELU pruning stability sweep, seed 45 | Dense: `-37.896 dB`; `30%`: `-37.830 dB`; `50%`: `-37.595 dB` | Dense: `-37.804 dB`; `30%`: `-37.732 dB`; `50%`: `-37.538 dB` | Sweep folder: `results/pruning_sweeps/20260503_0206` | No inference output recorded | `yhat` when inference is run |
 | 2026-05-03 | `experiment20260429T134032_xy` | N25 ELU seed 45 pruning sweep, 150 initial epochs | Dense: `-37.815 dB`; `30%`: `-37.776 dB`; `50%`: `-37.592 dB` | Dense: `-37.714 dB`; `30%`: `-37.684 dB`; `50%`: `-37.524 dB` | Sweep folder: `results/pruning_sweeps/20260503_0300` | No inference output recorded | `yhat` when inference is run |
 | 2026-05-03 | `experiment20260429T134032_xy` | N25 50% pruning activation sweep | Best activation ELU: `-37.616 dB`; leakyReLU: `-37.141 dB`; sigmoid: `-37.049 dB`; tanh: `-36.994 dB` | Best activation ELU: `-37.533 dB`; leakyReLU: `-37.062 dB`; sigmoid: `-37.031 dB`; tanh: `-36.901 dB` | Sweep folder: `results/activation_sweeps/20260503_0328` | No inference output recorded | `yhat` when inference is run |
+| 2026-05-03 | `experiment20260429T134032_xy` | N25 ELU dense-first pruning sweep | Dense: `-37.737 dB`; `30%`: `-37.770 dB`; `50%`: `-37.501 dB`; `60%`: `-37.183 dB` | Dense: `-37.646 dB`; best `30%`: `-37.679 dB`; `50%`: `-37.411 dB`; `60%`: `-37.098 dB` | Sweep folder: `results/pruning_sweeps/20260503_1105`; dense deploy source in `sparsity_000` | No inference output recorded | `yhat` when inference is run |
 
 ---
 
 ## Resultados asociados a `experiment20260429T134032_xy`
+
+### 2026-05-03 N25 ELU dense-first pruning sweep
+
+- Sweep folder: `results/pruning_sweeps/20260503_1105`
+- `results/` is not versioned; this result is indexed by local sweep path, not by committing `.mat`, `.fig`, CSV/XLSX/MAT result artifacts, or generated deploy packages.
+- Script: `experiments/run_PNNN_pruning_sweep_from_dense_first.m`
+- Purpose: document the dense-first pruning sweep, where the dense `0%` model is trained first and all pruned runs reuse its exact `deploy_package.mat`.
+- Measurement: `experiment20260429T134032_xy`
+- `mappingMode = xy_forward`
+- Local X/Y convention applies: `X` is the input of the modeled block and `Y` is its output; `xy_forward` is not automatically PA-forward.
+- Model: PNNN `phaseNorm full`
+- `M = 13`
+- `orders = [1 3 5 7]`
+- `inputDim = 84`
+- `numNeurons = 25`
+- `activation = ELU`
+- Split: train `70%`, val `15%`, test `15%`, `seed = 45`
+- Dense warm-start source for pruned runs: `results/pruning_sweeps/20260503_1105/sparsity_000/NN_DPD_M13O1357_N25_phaseNorm_full_elu_experiment20260429T134032_xy_20260503_1105_offline/deploy_package.mat`
+- Pruned runs set `warmStart.sourceFile` to the dense deploy from `sparsity_000`.
+- Pruned runs set `warmStart.useLatestDeploy = false`, `warmStart.skipInitialTraining = true`, and `warmStart.reuseNormStats = true`.
+- Initial `trainnet` is skipped for pruned runs; only pruning plus fine-tuning is performed.
+- GMP justo same split: TEST pinv `-36.63 dB`, TEST ridge `1e-4` `-36.38 dB`.
+
+| Sparsity | NMSE Train+Val | NMSE Test | Gain vs 0% | Gain vs GMP justo pinv | PAPR Test | EVM Test dB | EVM Test % | Pruned | Remaining | Mask |
+|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|:---|
+| `0%` | `-37.737 dB` | `-37.646 dB` | `0 dB` | `+1.0149 dB` | `14.073 dB` | `-37.646 dB` | `1.3113%` | `0` | `2150` | `N/A` |
+| `30%` | `-37.770 dB` | `-37.679 dB` | `+0.033325 dB` | `+1.0483 dB` | `14.079 dB` | `-37.679 dB` | `1.3063%` | `645` | `1505` | `OK` |
+| `50%` | `-37.501 dB` | `-37.411 dB` | `-0.23507 dB` | `+0.77987 dB` | `14.073 dB` | `-37.411 dB` | `1.3473%` | `1075` | `1075` | `OK` |
+| `60%` | `-37.183 dB` | `-37.098 dB` | `-0.54778 dB` | `+0.46715 dB` | `14.098 dB` | `-37.098 dB` | `1.3967%` | `1290` | `860` | `OK` |
+
+Interpretation:
+
+- The dense-first implementation is working as intended: one dense model is trained first, and all sparse runs reuse exactly that dense deploy package.
+- `30%` sparsity slightly improves the dense baseline by about `+0.033 dB` on TEST while pruning `645/2150` weights and keeping `1505` weights.
+- `50%` sparsity loses about `0.235 dB` versus the dense model but still beats GMP justo pinv by about `+0.78 dB` with only `1075` remaining weights.
+- `60%` sparsity is more aggressive: it loses about `0.548 dB` versus dense, but still beats GMP justo pinv by about `+0.47 dB` with `860` remaining weights.
+- This result supports dense-first `30%` as the best NMSE point in this sweep, dense-first `50%` as a stronger compression/performance trade-off, and dense-first `60%` as aggressive compression that remains above GMP.
+- Compared with the previous regular pruning sweep, this dense-first flow is experimentally cleaner because all sparse configurations start from the same dense model rather than independently retraining a dense model per sparsity.
+- Current candidate discussion should remain honest: this run supports dense-first `30%` as the best NMSE point in this sweep, while `50%` remains the useful compression trade-off.
+
+Limitations:
+
+- ACPR remains `INVALID_CONFIG` because channel bandwidth/spacing is not configured. Do not use ACPR for conclusions.
+- EVM is time-domain normalized EVM over the same temporal signals, not demodulated 5G NR EVM.
+
+---
 
 ### 2026-05-03 N25 50% pruning activation sweep
 

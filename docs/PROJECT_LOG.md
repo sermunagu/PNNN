@@ -1316,6 +1316,36 @@ Resultados:
 
 ---
 
+### 2026-05-03 — Documentation of dense-first pruning sweep results
+
+Objective:
+- Document the sweep `results/pruning_sweeps/20260503_1105`, executed by Sergi with `experiments/run_PNNN_pruning_sweep_from_dense_first.m`.
+
+Files modified:
+- `docs/EXPERIMENTS_LOG.md`
+- `docs/RESULTS_INDEX.md`
+- `docs/PROJECT_LOG.md`
+
+Changes made:
+- Recorded the dense-first behavior: the `0%` dense model is trained first, and all pruned runs reuse exactly the dense `deploy_package.mat` from `sparsity_000`.
+- Documented the compact results for `0%`, `30%`, `50%`, and `60%` sparsity.
+- Recorded `30%` as the best NMSE TEST point in this dense-first sweep, `50%` as the stronger compression/performance trade-off, and `60%` as aggressive compression that still remains above GMP justo pinv.
+- Kept ACPR as `INVALID_CONFIG` pending channel bandwidth/spacing configuration.
+- Documented EVM as time-domain normalized EVM, not demodulated 5G NR EVM.
+- Noted that `results/` and generated result artifacts are not versioned.
+
+Commands executed by Codex:
+- Lightweight Git status and Markdown inspection.
+- Documentation diff checks.
+
+Results:
+- No MATLAB training was executed.
+- No MATLAB inference was executed.
+- No pruning, activation, or dense-first sweep script was executed by Codex.
+- No `measurements/`, `results/`, `generated_outputs/`, `.mat`, `.fig`, `deploy_package.mat`, or generated CSV/XLSX/MAT result artifact was modified.
+
+---
+
 ## Plantilla para futuras entradas
 
 Copiar y rellenar esta plantilla después de cada intervención relevante:
