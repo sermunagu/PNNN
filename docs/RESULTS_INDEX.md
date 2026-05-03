@@ -24,10 +24,64 @@ Este fichero sirve para localizar rápidamente:
 | 2026-04-30 | `experiment20260429T134032_xy` | PNNN phase-normalized, global magnitude pruning 30% | `-38.62 dB` | `-38.61 dB` | `results/NN_DPD_xy_forward_M13O1357_N128_phaseNorm_full_elu_experiment20260429T134032_xy_20260430_offline/deploy_package.mat` | No inference output recorded | `yhat` when inference is run |
 | 2026-05-03 | `experiment20260429T134032_xy` | Important current result: N25 ELU global pruning sweep | Best `30%`: `-37.904 dB`; balanced `50%`: `-37.750 dB` | Best `30%`: `-37.905 dB`; balanced `50%`: `-37.744 dB` | Sweep folder: `results/pruning_sweeps/20260503_0013` | No inference output recorded | `yhat` when inference is run |
 | 2026-05-03 | `experiment20260429T134032_xy` | N25 ELU pruning stability sweep, seed 45 | Dense: `-37.896 dB`; `30%`: `-37.830 dB`; `50%`: `-37.595 dB` | Dense: `-37.804 dB`; `30%`: `-37.732 dB`; `50%`: `-37.538 dB` | Sweep folder: `results/pruning_sweeps/20260503_0206` | No inference output recorded | `yhat` when inference is run |
+| 2026-05-03 | `experiment20260429T134032_xy` | N25 ELU seed 45 pruning sweep, 150 initial epochs | Dense: `-37.815 dB`; `30%`: `-37.776 dB`; `50%`: `-37.592 dB` | Dense: `-37.714 dB`; `30%`: `-37.684 dB`; `50%`: `-37.524 dB` | Sweep folder: `results/pruning_sweeps/20260503_0300` | No inference output recorded | `yhat` when inference is run |
 
 ---
 
 ## Resultados asociados a `experiment20260429T134032_xy`
+
+### 2026-05-03 N25 ELU pruning sweep, seed 45, 150 initial epochs
+
+- Sweep folder: `results/pruning_sweeps/20260503_0300`
+- `results/` is not versioned; this result is indexed by local sweep path, not by committing `.mat` or generated result artifacts.
+- Purpose: repeat the previous seed-45 N25 ELU pruning stability sweep with initial training reduced from `300` to `150` epochs and `ValidationPatience = 50`.
+- Measurement: `experiment20260429T134032_xy`
+- `mappingMode = xy_forward`
+- Local X/Y convention applies: `X` is the input of the modeled block and `Y` is its output; `xy_forward` is not automatically PA-forward.
+- Model: PNNN `phaseNorm full`
+- `M = 13`
+- `orders = [1 3 5 7]`
+- `inputDim = 84`
+- `numNeurons = 25`
+- `actType = elu`
+- Split: train `70%`, val `15%`, test `15%`, `seed = 45`
+- Sparsity list: `[0 0.3 0.5]`
+- Initial training: `maxEpochs = 150`, `ValidationPatience = 50`
+- Pruning: global magnitude, weights only, bias protected.
+- Fine-tuning after pruning: `20` epochs.
+- GMP justo same split: TEST pinv `-36.63 dB`, TEST ridge `1e-4` `-36.38 dB`.
+
+| Sparsity | Remaining weights | NMSE Train+Val | NMSE Test | Gain vs dense | Gain vs GMP justo pinv | EVM Test | PAPR Test | Mask |
+|---:|---:|---:|---:|---:|---:|---:|---:|---|
+| `0%` | `2150` | `-37.815 dB` | `-37.714 dB` | `0 dB` | `+1.0826 dB` | `1.3011%` | `14.068 dB` | `N/A` |
+| `30%` | `1505` | `-37.776 dB` | `-37.684 dB` | `-0.029388 dB` | `+1.0532 dB` | `1.3055%` | `14.095 dB` | `OK` |
+| `50%` | `1075` | `-37.592 dB` | `-37.524 dB` | `-0.18914 dB` | `+0.89347 dB` | `1.3298%` | `14.072 dB` | `OK` |
+
+Comparison against previous seed-45 300-epoch sweep:
+
+| Sparsity | 300 epochs NMSE Test | 150 epochs NMSE Test | Difference |
+|---:|---:|---:|---:|
+| `0%` | `-37.804 dB` | `-37.714 dB` | `-0.090 dB` |
+| `30%` | `-37.732 dB` | `-37.684 dB` | `-0.048 dB` |
+| `50%` | `-37.538 dB` | `-37.524 dB` | `-0.014 dB` |
+
+Interpretation:
+
+- The `150`-epoch sweep reproduces the `300`-epoch sweep very closely.
+- Maximum NMSE TEST loss is below `0.1 dB` across `0%`, `30%`, and `50%`.
+- The pruning conclusions are preserved.
+- `30%` pruning remains almost equivalent to dense.
+- `50%` pruning remains a good complexity/performance compromise and still beats GMP justo pinv by about `+0.89 dB`.
+- This supports using `150` epochs as a faster exploratory sweep setting.
+- Training still stopped because `Max epochs completed`, not because of early stopping. The speedup comes mainly from lowering `maxEpochs`, not from `ValidationPatience = 50`.
+- Do not reduce pruning `fineTuneEpochs` yet; the best fine-tune epoch was `20` for `30%` and `19` for `50%`.
+
+Limitations:
+
+- ACPR status remains `INVALID_CONFIG` until channel bandwidth/spacing is configured. Do not use ACPR for conclusions.
+- EVM is time-domain normalized EVM, not demodulated 5G NR EVM.
+
+---
 
 ### 2026-05-03 N25 ELU pruning stability sweep, seed 45
 

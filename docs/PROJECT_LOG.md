@@ -1216,6 +1216,40 @@ Pendiente:
 
 ---
 
+### 2026-05-03 — Documentación del sweep rápido N25 ELU seed 45
+
+Objetivo:
+- Documentar el sweep `results/pruning_sweeps/20260503_0300`, que repite el N25 ELU seed 45 con entrenamiento inicial reducido a `150` épocas y `ValidationPatience = 50`.
+
+Archivos modificados:
+- `docs/EXPERIMENTS_LOG.md`
+- `docs/RESULTS_INDEX.md`
+- `docs/PROJECT_LOG.md`
+
+Cambios realizados:
+- Se registraron configuración, tabla compacta y comparación directa contra el sweep seed 45 de `300` épocas.
+- Se documentó que el sweep de `150` épocas reproduce muy de cerca el de `300` épocas, con pérdida máxima menor de `0.1 dB` en NMSE TEST.
+- Se mantuvo la conclusión de pruning: `30%` casi equivalente al denso y `50%` como compromiso complejidad/rendimiento, todavía aproximadamente `+0.89 dB` sobre GMP justo pinv.
+- Se dejó claro que la aceleración viene principalmente de bajar `maxEpochs`, porque el entrenamiento terminó por `Max epochs completed`, no por early stopping.
+- Se dejó pendiente no reducir todavía `fineTuneEpochs`, porque la mejor época de fine-tuning fue `20` para `30%` y `19` para `50%`.
+- Se mantuvo ACPR como `INVALID_CONFIG` pendiente de channel bandwidth/spacing y EVM como métrica temporal normalizada.
+- Se documentó el sweep por ruta local; `results/` no se versiona.
+
+Comandos ejecutados por Codex:
+- Inspección ligera de Markdown y del estado Git.
+- Checks Git ligeros.
+
+Resultados:
+- No se ejecutaron entrenamientos.
+- No se ejecutaron inferencias.
+- No se ejecutaron `train_PNNN_offline.m`, `run_PNNN_pruning_sweep.m`, `run_PNNN_activation_sweep.m` ni scripts de training/inference.
+- No se modificaron `measurements/`, `results/`, `generated_outputs/`, `.mat`, `.fig`, `deploy_package.mat` ni artefactos generados.
+
+Pendiente:
+- Configurar channel bandwidth/spacing antes de usar ACPR en conclusiones.
+
+---
+
 ## Plantilla para futuras entradas
 
 Copiar y rellenar esta plantilla después de cada intervención relevante:
