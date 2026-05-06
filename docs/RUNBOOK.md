@@ -128,9 +128,32 @@ Este es el sweep regular. Si `cfg.warmStart.enabled=true`, la fuente de warm sta
 
 Antes de ejecutarlo:
 
-- revisar `cfg.sweep.sparsityList` en `config/getPNNNConfig.m`;
+- revisar el modo de target en `config/getPNNNConfig.m`;
 - confirmar que el sweep no es más grande de lo necesario;
 - evitar barridos enormes sin hipótesis clara.
+
+Modo clásico por porcentaje:
+
+```matlab
+cfg.pruning.targetMode = 'sparsity';
+cfg.pruning.includeBiases = false;
+cfg.sweep.sparsityList = [0.3 0.4 0.5 0.6];
+```
+
+Modo por parámetros entrenables activos finales:
+
+```matlab
+cfg.pruning.targetMode = 'activeTrainableParams';
+cfg.pruning.includeBiases = false;
+cfg.sweep.targetActiveParamList = [1400 1200 1000 800];
+```
+
+Con `includeBiases=false`, el target incluye los bias en el total final,
+pero los bias quedan protegidos y el código resta esos parámetros antes de
+calcular cuántos pesos deben permanecer activos. Con `includeBiases=true`,
+pesos y bias entran en el conjunto podable y el target final cuenta ambos.
+Para comparar con literatura, reportar siempre los parámetros entrenables
+activos finales además del porcentaje de sparsity efectiva.
 
 Después:
 
@@ -177,13 +200,46 @@ Uso previsto:
 
 Usar este script cuando se quiera probar si llegar a una sparsity por pasos graduales es mas estable que aplicar la sparsity final de una sola vez.
 
+Modo por numero final de parametros activos:
+
+```matlab
+cfg.pruning.targetMode = 'activeTrainableParams';
+cfg.pruning.includeBiases = false;
+cfg.sweep.targetActiveParamList = [1400 1200 1000 800];
+```
+
+API vigente de pruning:
+
+- `cfg.pruning.targetMode = "sparsity" | "activeTrainableParams"`
+- `cfg.pruning.includeBiases = true | false`
+- `cfg.sweep.targetActiveParamList = [...]`
+- El alias legacy `includeBias` fue eliminado del codigo MATLAB; usar solo `includeBiases`.
+
+En este modo, cada valor de `targetActiveParamList` significa el numero final de parametros entrenables activos del modelo, incluyendo pesos y bias. Con `includeBiases=false`, los bias estan protegidos y el codigo resta esos parametros protegidos internamente antes de calcular cuantos pesos debe podar. Por ejemplo, si hay `2150` pesos podables, `27` bias protegidos y se pide `1000`, el objetivo interno de pesos activos es `973` y el resultado esperado son `1000` parametros entrenables activos totales.
+
+Para incluir bias en el conjunto podable:
+
+```matlab
+cfg.pruning.targetMode = 'activeTrainableParams';
+cfg.pruning.includeBiases = true;
+cfg.sweep.targetActiveParamList = [1400 1200 1000 800];
+```
+
+Con `includeBiases=true`, los bias tambien pueden ser podados y el objetivo total activo sigue contando pesos y bias. En ambos casos, el reporte debe distinguir target sparsity, parametros podables activos, pesos activos, bias activos, parametros protegidos y parametros entrenables activos totales.
+
 Nota de resultados actuales:
 
 - El sweep global iterativo es actualmente la mejor estrategia de pruning documentada.
+- La corrida target-active `results/pruning_sweeps/20260506_2133` valida el modo `activeTrainableParams`: alcanza conteos exactos de parametros entrenables activos finales.
+- En `results/pruning_sweeps/20260506_2133`, con `includeBiases=false`, los `27` bias quedan protegidos pero cuentan dentro del objetivo total activo. Los targets `[1400 1200 1000 800]` terminan respectivamente en pesos activos `[1373 1173 973 773]` mas `27` bias activos.
+- El mejor checkpoint de esa corrida es `1200` parametros entrenables activos, con NMSE TEST `-37.769 dB`.
+- `1000` parametros entrenables activos es el candidato compacto secundario fuerte, con NMSE TEST `-37.730 dB`.
+- No presentar la corrida target-active como mejor resultado historico global sin compararla explicitamente contra corridas previas cercanas a `-38 dB`.
 - La corrida oficial `results/pruning_sweeps/20260503_1727` ya incluye `40%` como checkpoint objetivo.
 - La corrida de confirmacion `results/pruning_sweeps/20260503_1842` con `seed = 42` es una ejecucion separada de la corrida `seed = 45` en `results/pruning_sweeps/20260503_1727`, y confirma la misma tendencia: la mejor zona practica es la meseta `30%`-`40%`.
 - `40%` es el candidato principal actual porque mantiene NMSE practicamente igual a `30%` y poda mas pesos; `50%` sigue como candidato equilibrado de compresion/rendimiento.
 - `60%` permanece por encima del denso y GMP en la confirmacion `seed = 42`, pero no es el candidato principal porque empieza a degradar frente a `30%`-`40%`.
+- ACPR sigue invalido hasta conocer la configuracion correcta de ancho y separacion de canal.
 
 ---
 
@@ -201,7 +257,7 @@ Uso previsto:
 - usa el deploy denso exacto como warm start fijo para cada sparsity podada;
 - fuerza `cfg.pruning.scope="layerwise"` en las corridas podadas;
 - poda la fraccion solicitada independientemente dentro de cada tensor podable;
-- mantiene protegidos los bias si `includeBias=false`.
+- mantiene protegidos los bias si `includeBiases=false`.
 
 Usar este script para comparar pruning global frente a pruning layer-wise con la misma logica dense-first.
 
@@ -209,6 +265,23 @@ Nota de resultados actuales:
 
 - La corrida layer-wise dense-first no queda seleccionada como candidata principal en su forma actual.
 - Degrada más que global iterativo, especialmente en `50%` y `60%`.
+
+---
+
+## Sweep de activaciones
+
+Solo Sergi, salvo permiso explícito:
+
+```powershell
+matlab -batch "run('experiments/run_PNNN_activation_sweep.m')"
+```
+
+Este script compara activaciones con `cfg.sweep.activationSparsity` y queda
+explícitamente fuera de la ruta oficial `targetActiveParamList`. Aunque el
+resto de sweeps de pruning soportan `cfg.pruning.targetMode =
+'activeTrainableParams'`, el sweep de activaciones fuerza internamente
+`targetMode = "sparsity"` para mantener fija la compresión durante la
+comparación de activaciones.
 
 ---
 

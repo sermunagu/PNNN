@@ -12,18 +12,39 @@ function stats = initPruningStats(pruningCfg)
 
 stats = struct();
 stats.enabled = pruningCfg.enabled;
+stats.targetMode = char(pruningCfg.targetMode);
 stats.sparsityTarget = pruningCfg.sparsity;
 stats.sparsityActual = 0;
 stats.scope = char(pruningCfg.scope);
-stats.includeBias = pruningCfg.includeBias;
+stats.includeBiases = pruningCfg.includeBiases;
 stats.freezePruned = pruningCfg.freezePruned;
+
 stats.totalPodableParams = 0;
+stats.totalTrainableParams = 0;
+stats.totalPrunableParams = 0;
+stats.protectedTrainableParams = 0;
+stats.totalWeightParams = 0;
+stats.totalBiasParams = 0;
+stats.targetActiveTrainableParams = NaN;
+stats.targetActivePrunableParams = NaN;
+stats.prunedPrunableParams = 0;
+stats.remainingPrunableParams = 0;
+stats.remainingTotalTrainableParams = 0;
+stats.actualActiveTrainableParams = 0;
+stats.actualPrunedPrunableParams = 0;
+stats.actualPrunableSparsity = 0;
+stats.activeWeightParams = 0;
+stats.activeBiasParams = 0;
+stats.prunedWeightParams = 0;
+stats.prunedBiasParams = 0;
+
 stats.numPrunedParams = 0;
 stats.numRemainingParams = 0;
 stats.parameterNames = strings(0, 1);
 stats.parameterTotal = [];
 stats.parameterPruned = [];
 stats.parameterRemaining = [];
+
 stats.fineTuneEnabled = pruningCfg.fineTuneEnabled;
 stats.fineTuneRun = false;
 stats.fineTuneEpochs = 0;

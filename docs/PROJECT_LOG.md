@@ -1521,6 +1521,184 @@ Results:
 
 ---
 
+### 2026-05-03 — Target active-parameter pruning sweep mode
+
+Objective:
+- Add an iterative dense-first pruning sweep mode where Sergi can request final active trainable parameter counts directly, including both weights and biases.
+
+Files modified:
+- `config/getPNNNConfig.m`
+- `experiments/denseFirstPruningSweepHelpers.m`
+- `experiments/run_PNNN_iterative_pruning_sweep_from_dense_first.m`
+- `toolbox/pruning/createMagnitudePruningMasks.m`
+- `toolbox/pruning/initPruningStats.m`
+- `toolbox/pruning/validatePruningConfig.m`
+- `toolbox/reporting/buildPNNNPerformanceSummary.m`
+- `toolbox/reporting/pnnnPerformanceCompactTable.m`
+- `toolbox/reporting/pnnnPerformanceDisplayTable.m`
+- `toolbox/reporting/pnnnPerformanceToTable.m`
+- `toolbox/reporting/printFinalPNNNSummary.m`
+- `train_PNNN_offline.m`
+- `docs/RUNBOOK.md`
+- `docs/PROJECT_LOG.md`
+
+Changes made:
+- Added `cfg.pruning.targetMode`, defaulting to `'sparsity'`, with new mode `'activeTrainableParams'`.
+- Added `cfg.sweep.targetActiveParamList` for target-count sweeps.
+- Added `cfg.pruning.includeBiases` as the official bias-pruning alias while keeping legacy `includeBias` behavior.
+- Extended magnitude pruning masks to count total trainable, prunable, protected, active weight, and active bias parameters without hardcoding architecture sizes.
+- Implemented exact global pruning by active trainable parameter target.
+- Implemented deterministic proportional layer-wise allocation for active trainable parameter targets.
+- Extended iterative dense-first pruning so target-count mode runs one monotonic chain from dense to progressively smaller active parameter counts.
+- Extended metadata, performance summaries, compact tables, and final console summaries with explicit active/trainable/prunable/protected parameter counts.
+- Documented weights-only and weights+biases target-count usage in `docs/RUNBOOK.md`.
+- Did not add experiment results.
+
+Commands executed by Codex:
+- Lightweight Git status and source/documentation inspection.
+- Static diff checks only.
+
+Results:
+- No MATLAB training was executed.
+- No MATLAB inference was executed.
+- No pruning, activation, iterative, layer-wise, or dense-first sweep script was executed by Codex.
+- No `measurements/`, `results/`, `generated_outputs/`, `.mat`, `.fig`, `deploy_package.mat`, or generated CSV/XLSX/MAT result artifact was modified.
+
+Manual command for Sergi:
+- `matlab -batch "run('experiments/run_PNNN_iterative_pruning_sweep_from_dense_first.m')"`
+
+---
+
+### 2026-05-03 — Target active parameter pruning API cleanup
+
+Objective:
+- Extend pruning targets by final active trainable-parameter count across the pruning routes and remove the older singular bias-pruning field.
+
+Files modified:
+- `config/getPNNNConfig.m`
+- `train_PNNN_offline.m`
+- `experiments/run_PNNN_pruning_sweep.m`
+- `experiments/run_PNNN_pruning_sweep_from_dense_first.m`
+- `experiments/run_PNNN_iterative_pruning_sweep_from_dense_first.m`
+- `experiments/run_PNNN_layerwise_pruning_sweep_from_dense_first.m`
+- `experiments/denseFirstPruningSweepHelpers.m`
+- `toolbox/pruning/validatePruningConfig.m`
+- `toolbox/pruning/initPruningStats.m`
+- `toolbox/pruning/createMagnitudePruningMasks.m`
+- `toolbox/pruning/summarizeTrainableParameters.m`
+- `toolbox/pruning/finalizePruningStatsFromNetwork.m`
+- `toolbox/reporting/buildPNNNPerformanceSummary.m`
+- `toolbox/reporting/pnnnPerformanceToTable.m`
+- `toolbox/reporting/pnnnPerformanceCompactTable.m`
+- `toolbox/reporting/pnnnPerformanceDisplayTable.m`
+- `toolbox/reporting/printFinalPNNNSummary.m`
+- `docs/RUNBOOK.md`
+- `docs/PROJECT_LOG.md`
+
+Changes made:
+- `cfg.pruning.targetMode = 'activeTrainableParams'` now works in direct `train_PNNN_offline.m` runs through scalar `cfg.pruning.targetActiveTrainableParams`.
+- Regular pruning sweeps, dense-first one-shot sweeps, dense-first iterative sweeps, and dense-first layer-wise sweeps now select either `cfg.sweep.sparsityList` or `cfg.sweep.targetActiveParamList` according to `cfg.pruning.targetMode`.
+- The pruning mask builder now computes total trainable, prunable, protected, target active, actual active, active weights, active biases, and effective sparsity counts.
+- Dense runs and pruning-disabled runs now finalize parameter counts from the final `dlnetwork`, so the dense row reports real active trainable parameters instead of zero-filled defaults.
+- Weight and bias totals/pruned counts are populated consistently for metadata and reporting.
+- Global target-count pruning selects an exact number of smallest-magnitude prunable parameters when the requested target is valid.
+- Layer-wise target-count pruning allocates the requested pruned count proportionally and deterministically across prunable tensors.
+- Reporting tables now expose target mode, scope, `includeBiases`, target/actual active trainable parameters, active weights/biases, protected parameters, total trainable parameters, pruned prunable parameters, remaining prunable parameters, effective sparsity, and mask integrity.
+- The older one-name bias-pruning field and sweep-level duplicate were removed in favor of `cfg.pruning.includeBiases` only.
+- `run_PNNN_activation_sweep.m` remains a fixed-sparsity activation comparison script and explicitly does not consume `cfg.sweep.targetActiveParamList`.
+
+Commands executed by Codex:
+- Lightweight source/documentation inspection.
+- Static diff checks only.
+
+Results:
+- No MATLAB training was executed.
+- No MATLAB inference was executed.
+- No pruning, activation, iterative, layer-wise, or dense-first sweep script was executed by Codex.
+- No `measurements/`, `results/`, `generated_outputs/`, `.mat`, `.fig`, `deploy_package.mat`, or generated CSV/XLSX/MAT result artifact was modified.
+
+Manual commands for Sergi:
+- `matlab -batch "run('experiments/run_PNNN_pruning_sweep.m')"`
+- `matlab -batch "run('experiments/run_PNNN_pruning_sweep_from_dense_first.m')"`
+- `matlab -batch "run('experiments/run_PNNN_iterative_pruning_sweep_from_dense_first.m')"`
+- `matlab -batch "run('experiments/run_PNNN_layerwise_pruning_sweep_from_dense_first.m')"`
+
+---
+
+### 2026-05-06 — Limpieza de metadata duplicada de pruning
+
+Objetivo:
+- Eliminar asignaciones redundantes de metadata de pruning en `train_PNNN_offline.m` sin cambiar entrenamiento, arquitectura, features, normalizacion, split, metricas ni semantica X/Y.
+
+Archivos modificados:
+- `train_PNNN_offline.m`
+- `docs/PROJECT_LOG.md`
+
+Cambios realizados:
+- Se conservo el bloque posterior y mas completo de metadata de pruning y se elimino el primer grupo redundante de asignaciones repetidas.
+- Los campos de conteo de pesos/biases y de sparsity efectiva quedan asignados una sola vez desde `pruningStats`.
+
+Comandos ejecutados por Codex:
+- Inspeccion ligera del bloque de metadata y busquedas estaticas.
+- `git diff --check`
+- `git diff --name-only -- measurements results generated_outputs`
+- `Get-ChildItem -Recurse -Include *.m | Select-String -Pattern '\bincludeBias\b'`
+- `Get-ChildItem -Recurse -Include *.m | Select-String -Pattern 'pruning_totalWeightParams|pruning_totalBiasParams|pruning_prunedWeightParams|pruning_prunedBiasParams'`
+- `.\tools\make_handoff.ps1 -TaskSummary "Consolidar metadata duplicada de pruning en train_PNNN_offline.m" -RiskLevel "low"`
+
+Resultados:
+- No MATLAB training was executed.
+- No MATLAB inference was executed.
+- No pruning, activation, iterative, layer-wise, or dense-first sweep script was executed by Codex.
+- No `measurements/`, `results/`, `generated_outputs/`, `.mat`, `.fig`, `deploy_package.mat`, or generated CSV/XLSX/MAT result artifact was modified.
+
+Pendiente:
+- Sergi puede relanzar los checks locales completos si quiere validar todo el arbol con su entorno MATLAB.
+
+---
+
+### 2026-05-06 — Documentacion de resultados target-active pruning
+
+Objetivo:
+- Documentar los resultados finales validados de `results/pruning_sweeps/20260506_2133` para pruning por numero objetivo de parametros entrenables activos.
+
+Archivos modificados:
+- `docs/EXPERIMENTS_LOG.md`
+- `docs/RESULTS_INDEX.md`
+- `docs/RUNBOOK.md`
+- `docs/PROJECT_LOG.md`
+
+Cambios realizados:
+- Se registro la corrida `20260506_2133` con medida `experiment20260429T134032_xy`, `mappingMode = xy_forward`, modelo phase-normalized `full`, `M = 13`, `orders = [1 3 5 7]`, `N = 25`, ELU y split `70/15/15` con `seed = 42`.
+- Se documento el modo `cfg.pruning.targetMode = "activeTrainableParams"`, `cfg.pruning.includeBiases = false`, `cfg.sweep.targetActiveParamList = [1400 1200 1000 800]`, scope global y metodo iterative dense-first global magnitude pruning weights-only.
+- Se dejo explicito que el alias legacy `includeBias` fue eliminado del codigo MATLAB y que los bias protegidos siguen contando dentro del objetivo total activo.
+- Se indexaron los checkpoints finales: denso `2177`, target `1400`, target `1200`, target `1000` y target `800`.
+- Se marco `1200` parametros entrenables activos como mejor checkpoint de esta corrida, NMSE TEST `-37.769 dB`.
+- Se marco `1000` parametros entrenables activos como candidato compacto secundario fuerte, NMSE TEST `-37.730 dB`.
+- Se aclaro que no debe afirmarse que este sea el mejor resultado historico global sin compararlo contra corridas previas cercanas a `-38 dB`.
+- Se mantuvo la advertencia de que ACPR sigue invalido hasta conocer la configuracion de ancho/separacion de canal.
+- Se aclaro que los artefactos generados bajo `results/` no se versionan intencionadamente.
+
+Comandos ejecutados por Codex:
+- `git status --short`
+- `git diff --check`
+- `git diff --name-only -- measurements results generated_outputs`
+- `Get-ChildItem -Recurse -Include *.m | Select-String -Pattern '\bincludeBias\b'`
+- `.\tools\make_handoff.ps1 -TaskSummary "Documentar resultados finales target-active pruning 20260506_2133" -RiskLevel "low"`
+
+Resultados:
+- No MATLAB training was executed.
+- No MATLAB inference was executed.
+- No pruning, activation, iterative, layer-wise, or dense-first sweep script was executed by Codex.
+- No MATLAB behavior was modified.
+- No `measurements/`, `results/`, `generated_outputs/`, `.mat`, `.fig`, `deploy_package.mat`, or generated result artifact was modified.
+
+Pendiente:
+- Validar ACPR cuando se conozca la configuracion correcta de ancho y separacion de canal.
+- Comparar explicitamente contra corridas historicas cercanas a `-38 dB` antes de hacer afirmaciones globales de mejor resultado.
+
+---
+
 ## Plantilla para futuras entradas
 
 Copiar y rellenar esta plantilla después de cada intervención relevante:

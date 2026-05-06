@@ -30,10 +30,56 @@ Este fichero sirve para localizar rápidamente:
 | 2026-05-03 | `experiment20260429T134032_xy` | Robustness confirmation: N25 ELU dense-first iterative global pruning, seed 42 | Dense: `-37.716 dB`; `30%`: `-38.027 dB`; `40%`: `-38.027 dB`; `50%`: `-37.924 dB`; `60%`: `-37.809 dB` | Dense: `-37.740 dB`; `30%`: `-38.043 dB`; `40%`: `-38.044 dB`; `50%`: `-37.933 dB`; `60%`: `-37.827 dB` | Sweep folder: `results/pruning_sweeps/20260503_1842`; generated artifacts not versioned | No inference output recorded | `yhat` when inference is run |
 | 2026-05-03 | `experiment20260429T134032_xy` | N25 ELU dense-first iterative global pruning, seed 45 official run | Dense: not provided; documented by TEST and gains | Dense: `-37.646 dB`; `30%`: `-37.941 dB`; official `40%`: `-37.968 dB`; `50%`: `-37.862 dB`; `60%`: `-37.734 dB` | Sweep folder: `results/pruning_sweeps/20260503_1727`; generated artifacts not versioned | No inference output recorded | `yhat` when inference is run |
 | 2026-05-03 | `experiment20260429T134032_xy` | N25 ELU layer-wise dense-first pruning sweep | Dense: not provided; documented by TEST only | Dense: `≈ -37.646 dB`; `30%`: `≈ -37.580 dB`; `50%`: `≈ -37.142 dB`; `60%`: `≈ -35.822 dB` | Local generated sweep summaries under `results/`; artifacts not versioned | No inference output recorded | `yhat` when inference is run |
+| 2026-05-06 | `experiment20260429T134032_xy` | N25 ELU target-active-parameter dense-first iterative global pruning, seed 42 | Not provided in this documentation update; documented by TEST checkpoints | Dense: `-37.740 dB`; target `1400`: `-37.623 dB`; best target `1200`: `-37.769 dB`; compact target `1000`: `-37.730 dB`; target `800`: `-37.531 dB` | Sweep folder: `results/pruning_sweeps/20260506_2133`; generated artifacts not versioned | No inference output recorded | `yhat` when inference is run |
 
 ---
 
 ## Resultados asociados a `experiment20260429T134032_xy`
+
+### 2026-05-06 Target-active-parameter dense-first iterative global pruning, seed 42
+
+- Sweep folder: `results/pruning_sweeps/20260506_2133`
+- `results/` is not versioned; this result is indexed by local sweep path, not by committing `.mat`, `.fig`, deploy packages, CSV/XLSX/MAT summaries, or generated result artifacts.
+- Script family: dense-first iterative global pruning (`experiments/run_PNNN_iterative_pruning_sweep_from_dense_first.m`).
+- Measurement: `experiment20260429T134032_xy`
+- `mappingMode = xy_forward`
+- Local X/Y convention applies: `X` is the input of the modeled block and `Y` is its output; `xy_forward` is not automatically PA-forward.
+- Model: PNNN `phaseNorm full`, N25, ELU.
+- `M = 13`
+- `orders = [1 3 5 7]`
+- Split: train `70%`, val `15%`, test `15%`, `seed = 42`
+- `cfg.pruning.targetMode = "activeTrainableParams"`
+- `cfg.pruning.includeBiases = false`
+- `cfg.sweep.targetActiveParamList = [1400 1200 1000 800]`
+- Legacy singular `includeBias` has been removed from MATLAB code.
+- Scope: global
+- Method: iterative dense-first global magnitude pruning, weights-only, biases protected.
+- Total trainable parameters: `2177`
+- Total prunable parameters: `2150`
+- Protected parameters: `27` biases
+- GMP justo TEST pinv: `-36.65 dB`
+- GMP justo TEST ridge `1e-4`: `-36.45 dB`
+- ACPR remains invalid until the bandwidth/separation configuration is known.
+
+Final validated target-active checkpoints:
+
+| Checkpoint | Target active params | Active weights | Active biases | Effective sparsity | NMSE TEST | Gain vs GMP justo pinv | Mask |
+|---|---:|---:|---:|---:|---:|---:|:---|
+| Dense | `2177` | `2150` | `27` | `0.000%` | `-37.740 dB` | `+1.085 dB` | `N/A` |
+| Target `1400` | `1400` | `1373` | `27` | `36.140%` | `-37.623 dB` | `+0.968 dB` | `OK` |
+| Target `1200` | `1200` | `1173` | `27` | `45.442%` | `-37.769 dB` | `+1.114 dB` | `OK` |
+| Target `1000` | `1000` | `973` | `27` | `54.744%` | `-37.730 dB` | `+1.075 dB` | `OK` |
+| Target `800` | `800` | `773` | `27` | `64.047%` | `-37.531 dB` | `+0.876 dB` | `OK` |
+
+Interpretation:
+
+- The target-active-parameter mode is validated and reaches exact final active trainable parameter counts.
+- With `includeBiases=false`, biases are protected but still count inside the total active parameter target.
+- The best checkpoint in this run is `1200` active trainable parameters with NMSE TEST `-37.769 dB`.
+- `1000` active trainable parameters is a strong compact secondary candidate with NMSE TEST `-37.730 dB`.
+- Do not present this as the best historical global result unless it is compared explicitly against previous runs near `-38 dB`.
+
+---
 
 ### 2026-05-03 Robustness confirmation: dense-first iterative global pruning, seed 42
 
@@ -182,7 +228,7 @@ Limitations:
 - Split: train `70%`, val `15%`, test `15%`, `seed = 45`
 - Activation list: `["elu", "tanh", "sigmoid", "leakyrelu"]`
 - Sparsity: `50%`
-- Pruning: global magnitude, weights only, bias protected (`includeBias = 0`).
+- Pruning: global magnitude, weights only, bias protected (`includeBiases = false`).
 - `freezePruned = 1`.
 - Fine-tuning after pruning: `20` epochs.
 - Remaining weights: `1075` for all activation runs.
@@ -285,7 +331,7 @@ Limitations:
 - Split: train `70%`, val `15%`, test `15%`, `seed = 45`
 - Sparsity list: `[0 0.3 0.5]`
 - Pruning: global magnitude, weights only.
-- Bias protected: `includeBias = 0`.
+- Bias protected: `includeBiases = false`.
 - `freezePruned = 1`.
 - Fine-tuning after pruning: `20` epochs.
 - GMP justo same split: TEST pinv `-36.63 dB`, TEST ridge `1e-4` `-36.38 dB`.
@@ -414,7 +460,7 @@ For the N25 ELU phase-normalized PNNN, global magnitude pruning remains effectiv
 
 - `pruning_enabled = true`
 - `pruning_scope = global`
-- `pruning_includeBias = false`
+- `pruning_includeBiases = false`
 - `pruning_freezePruned = true`
 - `pruning_sparsityTarget = 0.30`
 - `pruning_sparsityActual = 0.3000`

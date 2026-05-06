@@ -60,8 +60,11 @@ fprintf('%-33s: %s\n', 'Enabled', yesNo(enabled));
 
 if ~enabled
     fprintf('%-33s: %s\n', 'Method', 'N/A');
+    fprintf('%-33s: %s\n', 'Target mode', 'N/A');
     fprintf('%-33s: %s\n', 'Target sparsity', 'N/A');
     fprintf('%-33s: %s\n', 'Actual sparsity', 'N/A');
+    fprintf('%-33s: %s\n', 'Target active trainable params', 'N/A');
+    fprintf('%-33s: %s\n', 'Actual active trainable params', 'N/A');
     fprintf('%-33s: %s\n', 'Fine-tuning', 'N/A');
     fprintf('%-33s: %s\n', 'Best fine-tune epoch', 'N/A');
     fprintf('%-33s: %s\n', 'Mask integrity', 'N/A');
@@ -76,8 +79,8 @@ if strlength(scope) == 0
 end
 
 method = sprintf('%s magnitude, weights only', char(scope));
-if getField(pruningStats, 'includeBias', false)
-    method = sprintf('%s magnitude, weights and bias', char(scope));
+if getField(pruningStats, 'includeBiases', false)
+    method = sprintf('%s magnitude, weights and biases', char(scope));
 end
 
 totalPodable = getField(pruningStats, 'totalPodableParams', NaN);
@@ -110,8 +113,17 @@ else
 end
 
 fprintf('%-33s: %s\n', 'Method', method);
+fprintf('%-33s: %s\n', 'Target mode', textValue(getField(pruningStats, 'targetMode', "sparsity")));
 fprintf('%-33s: %s\n', 'Target sparsity', pctValue(getField(pruningStats, 'sparsityTarget', NaN)));
 fprintf('%-33s: %s\n', 'Actual sparsity', actualText);
+fprintf('%-33s: %s\n', 'Target active trainable params', intValue(getField(pruningStats, 'targetActiveTrainableParams', NaN)));
+fprintf('%-33s: %s\n', 'Actual active trainable params', intValue(getField(pruningStats, 'actualActiveTrainableParams', NaN)));
+fprintf('%-33s: %s\n', 'Active weights / biases', sprintf('%s / %s', ...
+    intValue(getField(pruningStats, 'activeWeightParams', NaN)), ...
+    intValue(getField(pruningStats, 'activeBiasParams', NaN))));
+fprintf('%-33s: %s\n', 'Protected / total trainable', sprintf('%s / %s', ...
+    intValue(getField(pruningStats, 'protectedTrainableParams', NaN)), ...
+    intValue(getField(pruningStats, 'totalTrainableParams', NaN))));
 fprintf('%-33s: %s\n', 'Fine-tuning', fineTuneText);
 fprintf('%-33s: %s\n', 'Best fine-tune epoch', intValue(getField(pruningStats, 'fineTuneBestEpoch', NaN)));
 fprintf('%-33s: %s\n', 'Mask integrity', maskText);

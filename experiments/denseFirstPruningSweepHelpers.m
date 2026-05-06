@@ -1,14 +1,19 @@
 function h = denseFirstPruningSweepHelpers()
 % denseFirstPruningSweepHelpers - Shared helpers for manual dense-first sweeps.
 %
-% This small factory keeps the new experiment scripts aligned with the
-% existing dense-first pruning workflow without changing that script.
-% The helpers are used only when Sergi manually launches the experiment.
+% This factory keeps dense-first pruning experiment scripts aligned without
+% changing the PNNN model flow. It supports percentage sparsity targets and
+% final active trainable-parameter targets.
 
+h.pruningTargetMode = @pruningTargetMode;
+h.includeBiasesFromConfig = @includeBiasesFromConfig;
 h.validateSparsityList = @validateSparsityList;
+h.validateTargetActiveParamList = @validateTargetActiveParamList;
 h.sparsityLabel = @sparsityLabel;
+h.targetParamLabel = @targetParamLabel;
 h.buildDenseRunOverrides = @buildDenseRunOverrides;
 h.buildPrunedRunOverrides = @buildPrunedRunOverrides;
+h.buildPrunedTargetParamRunOverrides = @buildPrunedTargetParamRunOverrides;
 h.resolveDeployFile = @resolveDeployFile;
 h.loadPerformanceSummary = @loadPerformanceSummary;
 h.appendPerformance = @appendPerformance;
@@ -16,6 +21,29 @@ h.addSweepBaselineGain = @addSweepBaselineGain;
 h.exportSweepSummary = @exportSweepSummary;
 h.printDisplayLines = @printDisplayLines;
 h.writeSweepConfigTxt = @writeSweepConfigTxt;
+end
+
+function targetMode = pruningTargetMode(baseCfg)
+targetMode = "sparsity";
+if isstruct(baseCfg) && isfield(baseCfg, 'pruning') && ...
+        isfield(baseCfg.pruning, 'targetMode') && ...
+        strlength(string(baseCfg.pruning.targetMode)) > 0
+    targetMode = string(baseCfg.pruning.targetMode);
+end
+
+validModes = ["sparsity", "activeTrainableParams"];
+if ~ismember(targetMode, validModes)
+    error("denseFirstPruningSweepHelpers:InvalidTargetMode", ...
+        "cfg.pruning.targetMode must be 'sparsity' or 'activeTrainableParams'.");
+end
+end
+
+function includeBiases = includeBiasesFromConfig(baseCfg)
+includeBiases = false;
+if isstruct(baseCfg) && isfield(baseCfg, 'pruning') && ...
+        isfield(baseCfg.pruning, 'includeBiases')
+    includeBiases = logical(baseCfg.pruning.includeBiases);
+end
 end
 
 function validateSparsityList(sparsityList, callerName)
@@ -31,21 +59,35 @@ if ~isnumeric(sparsityList) || isempty(sparsityList) || ...
 end
 end
 
+function validateTargetActiveParamList(targetList, callerName)
+if nargin < 2 || strlength(string(callerName)) == 0
+    callerName = "denseFirstPruningSweepHelpers";
+end
+
+if ~isnumeric(targetList) || isempty(targetList) || ...
+        any(~isfinite(targetList)) || any(targetList <= 0) || ...
+        any(targetList ~= floor(targetList))
+    error(char(string(callerName) + ":InvalidTargetActiveParamList"), ...
+        ['cfg.sweep.targetActiveParamList must contain finite positive ' ...
+        'integer active trainable-parameter targets.']);
+end
+end
+
 function label = sparsityLabel(prefix, sparsity)
 label = sprintf('%s_%03d', char(string(prefix)), round(100 * sparsity));
 end
 
+function label = targetParamLabel(prefix, targetActiveTrainableParams)
+label = sprintf('%s_%05d', char(string(prefix)), ...
+    round(double(targetActiveTrainableParams)));
+end
+
 function cfgOverrides = buildDenseRunOverrides(measurementName, ...
     measurementFolder, runResultsRoot, gmpBaselineDir, pruningScope, ...
-    includeBias, freezePruned)
+    includeBiases, freezePruned)
 
-cfgOverrides = struct();
-cfgOverrides.data.measurementName = measurementName;
-cfgOverrides.data.measurementFile = fullfile(measurementFolder, ...
-    [measurementName '.mat']);
-cfgOverrides.paths.resultsDir = runResultsRoot;
-cfgOverrides.runtime.clearCommandWindow = false;
-cfgOverrides.gmp.baselineDir = gmpBaselineDir;
+cfgOverrides = baseRunOverrides(measurementName, measurementFolder, ...
+    runResultsRoot, gmpBaselineDir);
 
 cfgOverrides.warmStart = struct();
 cfgOverrides.warmStart.enabled = false;
@@ -56,9 +98,11 @@ cfgOverrides.warmStart.skipInitialTraining = false;
 
 cfgOverrides.pruning = struct();
 cfgOverrides.pruning.enabled = false;
+cfgOverrides.pruning.targetMode = "sparsity";
 cfgOverrides.pruning.sparsity = 0;
+cfgOverrides.pruning.targetActiveTrainableParams = [];
 cfgOverrides.pruning.scope = pruningScope;
-cfgOverrides.pruning.includeBias = includeBias;
+cfgOverrides.pruning.includeBiases = includeBiases;
 cfgOverrides.pruning.freezePruned = freezePruned;
 cfgOverrides.pruning.fineTuneEnabled = false;
 cfgOverrides.pruning.fineTuneEpochs = 0;
@@ -66,8 +110,32 @@ end
 
 function cfgOverrides = buildPrunedRunOverrides(measurementName, ...
     measurementFolder, runResultsRoot, gmpBaselineDir, sparsity, ...
-    pruningScope, includeBias, freezePruned, fineTuneEpochs, sourceDeployFile)
+    pruningScope, includeBiases, freezePruned, fineTuneEpochs, sourceDeployFile)
 
+cfgOverrides = prunedBaseOverrides(measurementName, measurementFolder, ...
+    runResultsRoot, gmpBaselineDir, pruningScope, includeBiases, ...
+    freezePruned, fineTuneEpochs, sourceDeployFile);
+cfgOverrides.pruning.targetMode = "sparsity";
+cfgOverrides.pruning.sparsity = sparsity;
+cfgOverrides.pruning.targetActiveTrainableParams = [];
+end
+
+function cfgOverrides = buildPrunedTargetParamRunOverrides(measurementName, ...
+    measurementFolder, runResultsRoot, gmpBaselineDir, ...
+    targetActiveTrainableParams, pruningScope, includeBiases, freezePruned, ...
+    fineTuneEpochs, sourceDeployFile)
+
+cfgOverrides = prunedBaseOverrides(measurementName, measurementFolder, ...
+    runResultsRoot, gmpBaselineDir, pruningScope, includeBiases, ...
+    freezePruned, fineTuneEpochs, sourceDeployFile);
+cfgOverrides.pruning.targetMode = "activeTrainableParams";
+cfgOverrides.pruning.sparsity = 0;
+cfgOverrides.pruning.targetActiveTrainableParams = ...
+    double(targetActiveTrainableParams);
+end
+
+function cfgOverrides = baseRunOverrides(measurementName, measurementFolder, ...
+    runResultsRoot, gmpBaselineDir)
 cfgOverrides = struct();
 cfgOverrides.data.measurementName = measurementName;
 cfgOverrides.data.measurementFile = fullfile(measurementFolder, ...
@@ -75,6 +143,13 @@ cfgOverrides.data.measurementFile = fullfile(measurementFolder, ...
 cfgOverrides.paths.resultsDir = runResultsRoot;
 cfgOverrides.runtime.clearCommandWindow = false;
 cfgOverrides.gmp.baselineDir = gmpBaselineDir;
+end
+
+function cfgOverrides = prunedBaseOverrides(measurementName, ...
+    measurementFolder, runResultsRoot, gmpBaselineDir, pruningScope, ...
+    includeBiases, freezePruned, fineTuneEpochs, sourceDeployFile)
+cfgOverrides = baseRunOverrides(measurementName, measurementFolder, ...
+    runResultsRoot, gmpBaselineDir);
 
 cfgOverrides.warmStart = struct();
 cfgOverrides.warmStart.enabled = true;
@@ -87,9 +162,8 @@ cfgOverrides.warmStart.skipInitialTraining = true;
 
 cfgOverrides.pruning = struct();
 cfgOverrides.pruning.enabled = true;
-cfgOverrides.pruning.sparsity = sparsity;
 cfgOverrides.pruning.scope = pruningScope;
-cfgOverrides.pruning.includeBias = includeBias;
+cfgOverrides.pruning.includeBiases = includeBiases;
 cfgOverrides.pruning.freezePruned = freezePruned;
 cfgOverrides.pruning.fineTuneEnabled = true;
 cfgOverrides.pruning.fineTuneEpochs = fineTuneEpochs;

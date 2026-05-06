@@ -2,8 +2,8 @@ function compactTable = pnnnPerformanceCompactTable(performanceInput)
 % pnnnPerformanceCompactTable - Build the compact DPD-facing performance table.
 %
 % Accepts a performance struct stack or the long table produced by
-% pnnnPerformanceToTable. The output keeps only the compact columns used for
-% quick inspection of identification/validation and pruning sweep results.
+% pnnnPerformanceToTable. The output keeps compact metric columns plus
+% explicit pruning target/count columns used for sweep comparisons.
 
 if nargin < 1 || isempty(performanceInput)
     performanceTable = table();
@@ -17,10 +17,32 @@ n = height(performanceTable);
 compactTable = table();
 compactTable.Measurement = tableColumnOrDefault(performanceTable, ...
     'Measurement', repmat("N/A", n, 1));
+compactTable.TargetMode = tableColumnFirstAvailable(performanceTable, ...
+    {'PruningTargetMode', 'TargetMode'}, repmat("sparsity", n, 1));
+compactTable.Scope = tableColumnFirstAvailable(performanceTable, ...
+    {'PruningScope', 'Scope'}, repmat("", n, 1));
+compactTable.IncludeBiases = tableColumnFirstAvailable(performanceTable, ...
+    {'PruningIncludeBiases', 'IncludeBiases'}, false(n, 1));
 compactTable.Sparsity = tableColumnFirstAvailable(performanceTable, ...
     {'SparsityTarget_pct', 'Sparsity'}, NaN(n, 1));
 compactTable.Sparsity = normalizeDisabledSparsity( ...
     compactTable.Sparsity, performanceTable);
+compactTable.EffectiveSparsity = tableColumnFirstAvailable(performanceTable, ...
+    {'SparsityActual_pct', 'EffectiveSparsity'}, NaN(n, 1));
+compactTable.TargetActiveParams = tableColumnFirstAvailable(performanceTable, ...
+    {'TargetActiveTrainableParams', 'TargetActiveParams'}, NaN(n, 1));
+compactTable.ActualActiveParams = tableColumnFirstAvailable(performanceTable, ...
+    {'ActualActiveTrainableParams', 'ActualActiveParams'}, NaN(n, 1));
+compactTable.ActiveWeights = tableColumnFirstAvailable(performanceTable, ...
+    {'ActiveWeightParams', 'ActiveWeights'}, NaN(n, 1));
+compactTable.ActiveBiases = tableColumnFirstAvailable(performanceTable, ...
+    {'ActiveBiasParams', 'ActiveBiases'}, NaN(n, 1));
+compactTable.ProtectedParams = tableColumnFirstAvailable(performanceTable, ...
+    {'ProtectedTrainableParams', 'ProtectedParams'}, NaN(n, 1));
+compactTable.TotalTrainable = tableColumnFirstAvailable(performanceTable, ...
+    {'TotalTrainableParams', 'TotalTrainable'}, NaN(n, 1));
+compactTable.TotalPrunable = tableColumnFirstAvailable(performanceTable, ...
+    {'TotalPrunableParams', 'TotalPodableParams', 'TotalPrunable'}, NaN(n, 1));
 compactTable.NMSE_Identificacion_dB = tableColumnFirstAvailable( ...
     performanceTable, {'NMSE_TrainVal_dB', 'NMSE_Identificacion_dB'}, ...
     NaN(n, 1));
@@ -54,9 +76,9 @@ compactTable.ACPR_R1_dB = tableColumnFirstAvailable(performanceTable, ...
 compactTable.ACPR_R2_dB = tableColumnFirstAvailable(performanceTable, ...
     {'ACPR_Test_Pred_Right2_dB', 'ACPR_R2_dB'}, NaN(n, 1));
 compactTable.Pruned = tableColumnFirstAvailable(performanceTable, ...
-    {'PrunedParams', 'Pruned'}, NaN(n, 1));
+    {'PrunedPrunableParams', 'PrunedParams', 'Pruned'}, NaN(n, 1));
 compactTable.Remaining = tableColumnFirstAvailable(performanceTable, ...
-    {'RemainingParams', 'Remaining'}, NaN(n, 1));
+    {'RemainingPrunableParams', 'RemainingParams', 'Remaining'}, NaN(n, 1));
 compactTable.Mask = tableColumnFirstAvailable(performanceTable, ...
     {'MaskIntegrityStatus', 'Mask'}, repmat("N/A", n, 1));
 compactTable = normalizeDisabledPruningRows(compactTable, performanceTable);
@@ -77,6 +99,7 @@ if ~any(disabledRows)
 end
 
 compactTable.Sparsity(disabledRows) = 0;
+compactTable.EffectiveSparsity(disabledRows) = 0;
 compactTable.Pruned(disabledRows) = 0;
 compactTable.Remaining(disabledRows) = NaN;
 compactTable.Mask(disabledRows) = "N/A";
@@ -145,28 +168,30 @@ if ~any(needsRepair)
     return;
 end
 
-totalPodableParams = inferTotalPodableParams(compactTable, performanceTable);
-if isfinite(totalPodableParams)
-    compactTable.Remaining(needsRepair) = totalPodableParams;
+totalPrunableParams = inferTotalPrunableParams(compactTable, performanceTable);
+if isfinite(totalPrunableParams)
+    compactTable.Remaining(needsRepair) = totalPrunableParams;
 else
     compactTable.Remaining(needsRepair) = NaN;
 end
 end
 
-function totalPodableParams = inferTotalPodableParams(compactTable, performanceTable)
-totalPodableParams = NaN;
-if any(strcmp(performanceTable.Properties.VariableNames, 'TotalPodableParams'))
-    totals = performanceTable.TotalPodableParams;
-    totals = totals(isfinite(totals) & totals > 0);
-    if ~isempty(totals)
-        totalPodableParams = max(totals);
-        return;
+function totalPrunableParams = inferTotalPrunableParams(compactTable, performanceTable)
+totalPrunableParams = NaN;
+for columnName = ["TotalPrunableParams", "TotalPodableParams"]
+    if any(strcmp(performanceTable.Properties.VariableNames, columnName))
+        totals = performanceTable.(columnName);
+        totals = totals(isfinite(totals) & totals > 0);
+        if ~isempty(totals)
+            totalPrunableParams = max(totals);
+            return;
+        end
     end
 end
 
 paramTotals = compactTable.Pruned + compactTable.Remaining;
 paramTotals = paramTotals(isfinite(paramTotals) & paramTotals > 0);
 if ~isempty(paramTotals)
-    totalPodableParams = max(paramTotals);
+    totalPrunableParams = max(paramTotals);
 end
 end

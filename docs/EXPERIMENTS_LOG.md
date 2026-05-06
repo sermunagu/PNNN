@@ -35,6 +35,7 @@ Regla práctica: si una entrada no cabe razonablemente en una pantalla, debe res
 
 | Fecha | Medida | Experimento | Decisión / conclusión |
 |---|---|---|---|
+| 2026-05-06 | `experiment20260429T134032_xy` | Target-active-parameter dense-first iterative global pruning | Valida el modo `activeTrainableParams` con conteos activos exactos. En esta corrida, el mejor checkpoint es `1200` parametros entrenables activos con NMSE TEST `-37.769 dB`; `1000` es el candidato compacto secundario con `-37.730 dB`. No se versionan artefactos generados y no debe presentarse como mejor resultado historico global sin compararlo contra corridas previas cercanas a `-38 dB`. |
 | 2026-05-03 | `experiment20260429T134032_xy` | Robustness confirmation: dense-first iterative global pruning, seed 42 | Confirms the seed 45 trend; `30%`-`40%` is the best practical plateau, `40%` remains the main candidate, and `50%` remains the balanced compression candidate. |
 | 2026-05-03 | `experiment20260429T134032_xy` | Official dense-first iterative global pruning with 40% checkpoint | Iterative global `40%` is the current best performance candidate; `50%` remains the balanced compression candidate; layer-wise pruning is not selected. |
 | 2026-05-03 | `experiment20260429T134032_xy` | Dense-first N25 ELU pruning sweep | The dense-first flow works as intended; `30%` is the best TEST NMSE point in this sweep, `50%` is the stronger compression/performance trade-off, and `60%` remains above GMP justo pinv. |
@@ -43,6 +44,50 @@ Regla práctica: si una entrada no cabe razonablemente en una pantalla, debe res
 | 2026-05-03 | `experiment20260429T134032_xy` | Estabilidad N25 ELU seed 45 | La seed 45 no confirma mejora NMSE por pruning; 30% y 50% mantienen degradación baja y siguen por encima de GMP justo pinv. |
 | 2026-05-03 | `experiment20260429T134032_xy` | Sweep N25 ELU con pruning global | Para N25 ELU, el 30% da el mejor NMSE TEST y el 50% es el mejor compromiso complejidad/rendimiento; ACPR queda pendiente por configuración de ancho de canal. |
 | 2026-04-29/30 | `experiment20260429T134032_xy` | Baseline PNNN vs pruning 30% | El pruning global al 30% no degrada; mejora muy ligeramente el NMSE TEST y mantiene ventaja clara frente a GMP. |
+
+---
+
+## 20260506_2133 — Target-active-parameter dense-first iterative global pruning
+
+**Measurement:** `experiment20260429T134032_xy`
+
+**Sweep folder:** `results/pruning_sweeps/20260506_2133`
+
+`results/` is not versioned; this sweep is documented by its local result path, not by committing `.mat`, `.fig`, deploy packages, CSV/XLSX/MAT summaries, or other generated result artifacts.
+
+**Purpose:** document the final validated target-active-parameter pruning run for the N25 ELU PNNN flow.
+
+**Configuration:** PNNN with phase-normalized `full` features, `M = 13`, `orders = [1 3 5 7]`, `N = 25`, ELU activation, `mappingMode = xy_forward`, and split `70%` train, `15%` val, `15%` test with `seed = 42`. Under the local PNNN X/Y convention, `X` is the input of the modeled block and `Y` is its output; `xy_forward` must not be reinterpreted automatically as physical PA-forward modeling.
+
+**Pruning API:** `cfg.pruning.targetMode = "sparsity" | "activeTrainableParams"`, `cfg.pruning.includeBiases = true | false`, and `cfg.sweep.targetActiveParamList = [...]`. The legacy singular `includeBias` field has been removed from MATLAB code.
+
+**Pruning mode:** `targetMode = activeTrainableParams`, global scope, `includeBiases = false`, iterative dense-first global magnitude pruning, weights-only with biases protected. Total trainable parameters are `2177`, total prunable parameters are `2150`, and protected parameters are the `27` biases.
+
+**GMP reference:** GMP justo TEST pinv is `-36.65 dB`; GMP justo TEST ridge `1e-4` is `-36.45 dB`.
+
+**Final compact summary:**
+
+| Checkpoint | Target active params | Active weights | Active biases | Effective sparsity | NMSE TEST | Gain vs GMP justo pinv | Mask |
+|---|---:|---:|---:|---:|---:|---:|:---|
+| Dense | `2177` | `2150` | `27` | `0.000%` | `-37.740 dB` | `+1.085 dB` | `N/A` |
+| Target `1400` | `1400` | `1373` | `27` | `36.140%` | `-37.623 dB` | `+0.968 dB` | `OK` |
+| Target `1200` | `1200` | `1173` | `27` | `45.442%` | `-37.769 dB` | `+1.114 dB` | `OK` |
+| Target `1000` | `1000` | `973` | `27` | `54.744%` | `-37.730 dB` | `+1.075 dB` | `OK` |
+| Target `800` | `800` | `773` | `27` | `64.047%` | `-37.531 dB` | `+0.876 dB` | `OK` |
+
+**Interpretation:**
+
+- The `activeTrainableParams` target mode is validated in this run.
+- The run achieves exact final active trainable parameter counts.
+- With `includeBiases=false`, biases are protected from pruning but still count inside the total active parameter target. For example, target `1000` means `973` active weights plus `27` protected active biases.
+- The best checkpoint in this run is `1200` active trainable parameters with NMSE TEST `-37.769 dB`.
+- `1000` active trainable parameters is the strong compact secondary candidate with NMSE TEST `-37.730 dB`.
+- This should not be claimed as the best historical global result unless compared explicitly against previous runs near `-38 dB`.
+- ACPR remains invalid until the bandwidth/separation configuration is known.
+
+**Decision:**
+
+Use target-active-parameter pruning as a validated compression route when the goal is a fixed final parameter budget. For this run, document `1200` as the best checkpoint and `1000` as the compact secondary candidate.
 
 ---
 
@@ -237,7 +282,7 @@ See `docs/RESULTS_INDEX.md`.
 - activaciones: `["elu", "tanh", "sigmoid", "leakyrelu"]`
 - sparsity fija: `50%`
 - pruning global por magnitud, solo pesos
-- bias protegido: `includeBias = 0`
+- bias protegido: `includeBiases = false`
 - `freezePruned = 1`
 - fine-tuning posterior al pruning: `20` épocas
 - pesos restantes: `1075` en todas las corridas
@@ -389,7 +434,7 @@ Ver `docs/RESULTS_INDEX.md`.
 - `seed = 45`
 - `sparsityList = [0 0.3 0.5]`
 - pruning global por magnitud, solo pesos
-- bias protegido: `includeBias = 0`
+- bias protegido: `includeBiases = false`
 - `freezePruned = 1`
 - fine-tuning posterior al pruning: `20` épocas
 

@@ -294,6 +294,9 @@ if cfg.pruning.enabled
     end
 end
 
+pruningStats = finalizePruningStatsFromNetwork(netDPD, pruningStats, ...
+    pruningState);
+
 if ~(isstruct(info) && isempty(fieldnames(info)))
     saveTrainingProgressFigure(info, expFolder);
 end
@@ -430,8 +433,26 @@ metadata.pruning_enabled = pruningStats.enabled;
 metadata.pruning_sparsityTarget = pruningStats.sparsityTarget;
 metadata.pruning_sparsityActual = pruningStats.sparsityActual;
 metadata.pruning_scope = pruningStats.scope;
-metadata.pruning_includeBias = pruningStats.includeBias;
+metadata.pruning_targetMode = pruningStats.targetMode;
+metadata.pruning_includeBiases = pruningStats.includeBiases;
 metadata.pruning_freezePruned = pruningStats.freezePruned;
+metadata.pruning_targetActiveTrainableParams = pruningStats.targetActiveTrainableParams;
+metadata.pruning_targetActivePrunableParams = pruningStats.targetActivePrunableParams;
+metadata.pruning_totalTrainableParams = pruningStats.totalTrainableParams;
+metadata.pruning_totalPrunableParams = pruningStats.totalPrunableParams;
+metadata.pruning_protectedTrainableParams = pruningStats.protectedTrainableParams;
+metadata.pruning_prunedPrunableParams = pruningStats.prunedPrunableParams;
+metadata.pruning_remainingPrunableParams = pruningStats.remainingPrunableParams;
+metadata.pruning_remainingTotalTrainableParams = pruningStats.remainingTotalTrainableParams;
+metadata.pruning_actualActiveTrainableParams = pruningStats.actualActiveTrainableParams;
+metadata.pruning_actualPrunedPrunableParams = pruningStats.actualPrunedPrunableParams;
+metadata.pruning_actualPrunableSparsity = pruningStats.actualPrunableSparsity;
+metadata.pruning_totalWeightParams = pruningStats.totalWeightParams;
+metadata.pruning_totalBiasParams = pruningStats.totalBiasParams;
+metadata.pruning_activeWeightParams = pruningStats.activeWeightParams;
+metadata.pruning_activeBiasParams = pruningStats.activeBiasParams;
+metadata.pruning_prunedWeightParams = pruningStats.prunedWeightParams;
+metadata.pruning_prunedBiasParams = pruningStats.prunedBiasParams;
 metadata.pruning_totalPodableParams = pruningStats.totalPodableParams;
 metadata.pruning_numPrunedParams = pruningStats.numPrunedParams;
 metadata.pruning_numRemainingParams = pruningStats.numRemainingParams;

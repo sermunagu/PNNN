@@ -1,8 +1,8 @@
 % Script: run_PNNN_layerwise_pruning_sweep_from_dense_first
 %
 % Runs a dense 0% PNNN first, then applies layer-wise magnitude pruning from
-% that exact dense deploy for each sparsity. This is a manual experiment
-% script and may take a long time to run.
+% that exact dense deploy. Supports sparsity targets and final active
+% trainable-parameter targets.
 
 clear; clc; close all;
 
@@ -13,17 +13,38 @@ baseCfg = getPNNNConfig(repoRoot);
 helpers = denseFirstPruningSweepHelpers();
 
 %% ======================= SWEEP CONFIG =======================
-if isfield(baseCfg, 'sweep') && isfield(baseCfg.sweep, 'sparsityList') && ...
-        ~isempty(baseCfg.sweep.sparsityList)
-    sparsityList = double(baseCfg.sweep.sparsityList(:)).';
+targetMode = helpers.pruningTargetMode(baseCfg);
+if targetMode == "sparsity"
+    if isfield(baseCfg, 'sweep') && isfield(baseCfg.sweep, 'sparsityList') && ...
+            ~isempty(baseCfg.sweep.sparsityList)
+        sparsityList = double(baseCfg.sweep.sparsityList(:)).';
+    else
+        sparsityList = [0 0.5];
+    end
+    helpers.validateSparsityList(sparsityList, ...
+        "run_PNNN_layerwise_pruning_sweep_from_dense_first");
+    prunedSparsityList = unique(sparsityList(sparsityList > 0), 'stable');
+    effectiveSparsityList = [0 prunedSparsityList];
+    targetActiveParamList = [];
+    prunedTargetActiveParamList = [];
 else
-    sparsityList = [0 0.5];
+    if ~isfield(baseCfg, 'sweep') || ...
+            ~isfield(baseCfg.sweep, 'targetActiveParamList')
+        error("run_PNNN_layerwise_pruning_sweep_from_dense_first:MissingTargetActiveParamList", ...
+            "cfg.sweep.targetActiveParamList is required when cfg.pruning.targetMode is 'activeTrainableParams'.");
+    end
+    targetActiveParamList = double(baseCfg.sweep.targetActiveParamList(:)).';
+    helpers.validateTargetActiveParamList(targetActiveParamList, ...
+        "run_PNNN_layerwise_pruning_sweep_from_dense_first");
+    prunedTargetActiveParamList = unique(sort(targetActiveParamList, 'descend'), ...
+        'stable');
+    sparsityList = 0;
+    prunedSparsityList = [];
+    effectiveSparsityList = 0;
 end
-helpers.validateSparsityList(sparsityList, ...
-    "run_PNNN_layerwise_pruning_sweep_from_dense_first");
 
 fineTuneEpochs = baseCfg.sweep.fineTuneEpochs;
-includeBias = baseCfg.sweep.includeBias;
+includeBiases = helpers.includeBiasesFromConfig(baseCfg);
 freezePruned = baseCfg.sweep.freezePruned;
 pruningScope = "layerwise";
 measurementName = baseCfg.data.measurementName;
@@ -35,9 +56,6 @@ else
     sweepOutputRoot = baseCfg.sweep.outputRoot;
 end
 
-prunedSparsityList = sparsityList(sparsityList > 0);
-effectiveSparsityList = [0 prunedSparsityList];
-
 timestamp = char(datetime('now', 'Format', 'yyyyMMdd_HHmm'));
 sweepFolder = fullfile(sweepOutputRoot, timestamp);
 if ~exist(sweepFolder, 'dir')
@@ -48,11 +66,14 @@ gmpBaselineDir = fullfile(sweepFolder, char(baseCfg.gmp.baselineFolderName));
 
 sweepConfig = struct();
 sweepConfig.mode = "dense_first_layerwise";
+sweepConfig.targetMode = targetMode;
 sweepConfig.requestedSparsityList = sparsityList;
 sweepConfig.sparsityList = effectiveSparsityList;
 sweepConfig.prunedSparsityList = prunedSparsityList;
+sweepConfig.requestedTargetActiveParamList = targetActiveParamList;
+sweepConfig.targetActiveParamList = prunedTargetActiveParamList;
 sweepConfig.fineTuneEpochs = fineTuneEpochs;
-sweepConfig.includeBias = includeBias;
+sweepConfig.includeBiases = includeBiases;
 sweepConfig.freezePruned = freezePruned;
 sweepConfig.pruningScope = pruningScope;
 sweepConfig.measurementName = measurementName;
@@ -69,7 +90,7 @@ sweepConfig.prunedRunsSkipInitialTraining = true;
 sweepConfig.prunedRunsReuseNormStats = true;
 sweepConfig.prunedRunsUseLatestDeploy = false;
 sweepConfig.layerwisePolicy = ...
-    "prune_requested_fraction_independently_inside_each_podable_tensor";
+    "sparsity mode prunes each tensor by the requested fraction; active-parameter mode allocates pruned counts proportionally across prunable tensors";
 
 save(fullfile(sweepFolder, 'sweep_config.mat'), 'sweepConfig');
 helpers.writeSweepConfigTxt(fullfile(sweepFolder, 'sweep_config.txt'), ...
@@ -83,12 +104,13 @@ if ~exist(denseRunResultsRoot, 'dir')
 end
 
 fprintf('\n================ PNNN dense-first layer-wise pruning sweep ================\n');
+fprintf('Target mode     : %s\n', char(targetMode));
 fprintf('Dense run       : %s\n', denseRunResultsRoot);
 fprintf('GMP baseline dir: %s\n', gmpBaselineDir);
 
 cfgOverrides = helpers.buildDenseRunOverrides( ...
     measurementName, baseCfg.paths.measurementsDir, denseRunResultsRoot, ...
-    gmpBaselineDir, pruningScope, includeBias, freezePruned);
+    gmpBaselineDir, pruningScope, includeBiases, freezePruned);
 
 train_PNNN_offline;
 
@@ -105,7 +127,8 @@ save(fullfile(sweepFolder, 'sweep_config.mat'), 'sweepConfig');
 helpers.writeSweepConfigTxt(fullfile(sweepFolder, 'sweep_config.txt'), ...
     sweepConfig, "PNNN dense-first layer-wise pruning sweep config");
 
-performanceStack = helpers.appendPerformance(performanceStack, densePerformance);
+performanceStack = helpers.appendPerformance(performanceStack, ...
+    densePerformance);
 sweepSummary = pnnnPerformanceToTable(performanceStack);
 sweepSummary = helpers.addSweepBaselineGain(sweepSummary);
 helpers.exportSweepSummary(sweepSummary, performanceStack, sweepFolder, ...
@@ -113,30 +136,54 @@ helpers.exportSweepSummary(sweepSummary, performanceStack, sweepFolder, ...
     "run_PNNN_layerwise_pruning_sweep_from_dense_first:xlsxExportFailed");
 
 %% ======================= RUN LAYER-WISE WARM-START SWEEP =======================
-for sweepIdx = 1:numel(prunedSparsityList)
-    sparsity = prunedSparsityList(sweepIdx);
-    runLabel = helpers.sparsityLabel("layerwise_sparsity", sparsity);
+if targetMode == "sparsity"
+    numRuns = numel(prunedSparsityList);
+else
+    numRuns = numel(prunedTargetActiveParamList);
+end
+
+for sweepIdx = 1:numRuns
+    if targetMode == "sparsity"
+        sparsity = prunedSparsityList(sweepIdx);
+        runLabel = helpers.sparsityLabel("layerwise_sparsity", sparsity);
+        targetText = sprintf('Sparsity target : %.2f %%', 100 * sparsity);
+    else
+        targetActiveParams = prunedTargetActiveParamList(sweepIdx);
+        runLabel = helpers.targetParamLabel("layerwise_target_params", ...
+            targetActiveParams);
+        targetText = sprintf('Target active trainable params: %d', ...
+            round(targetActiveParams));
+    end
+
     runResultsRoot = fullfile(sweepFolder, runLabel);
     if ~exist(runResultsRoot, 'dir')
         mkdir(runResultsRoot);
     end
 
     fprintf('\n================ PNNN dense-first layer-wise run %d/%d ================\n', ...
-        sweepIdx, numel(prunedSparsityList));
-    fprintf('Sparsity target : %.2f %%\n', 100 * sparsity);
+        sweepIdx, numRuns);
+    fprintf('%s\n', targetText);
     fprintf('Results root    : %s\n', runResultsRoot);
     fprintf('Dense deploy    : %s\n', denseDeployFile);
 
-    cfgOverrides = helpers.buildPrunedRunOverrides( ...
-        measurementName, baseCfg.paths.measurementsDir, runResultsRoot, ...
-        gmpBaselineDir, sparsity, pruningScope, includeBias, freezePruned, ...
-        fineTuneEpochs, denseDeployFile);
+    if targetMode == "sparsity"
+        cfgOverrides = helpers.buildPrunedRunOverrides( ...
+            measurementName, baseCfg.paths.measurementsDir, runResultsRoot, ...
+            gmpBaselineDir, sparsity, pruningScope, includeBiases, ...
+            freezePruned, fineTuneEpochs, denseDeployFile);
+    else
+        cfgOverrides = helpers.buildPrunedTargetParamRunOverrides( ...
+            measurementName, baseCfg.paths.measurementsDir, runResultsRoot, ...
+            gmpBaselineDir, targetActiveParams, pruningScope, includeBiases, ...
+            freezePruned, fineTuneEpochs, denseDeployFile);
+    end
 
     train_PNNN_offline;
 
     runPerformance = helpers.loadPerformanceSummary(performanceMatFile, ...
         "run_PNNN_layerwise_pruning_sweep_from_dense_first");
-    performanceStack = helpers.appendPerformance(performanceStack, runPerformance);
+    performanceStack = helpers.appendPerformance(performanceStack, ...
+        runPerformance);
     sweepSummary = pnnnPerformanceToTable(performanceStack);
     sweepSummary = helpers.addSweepBaselineGain(sweepSummary);
     helpers.exportSweepSummary(sweepSummary, performanceStack, sweepFolder, ...

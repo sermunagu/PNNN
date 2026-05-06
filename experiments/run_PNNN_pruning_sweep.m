@@ -1,9 +1,8 @@
 % Script: run_PNNN_pruning_sweep
 %
-% This script runs sequential PNNN training jobs for a configured list of
-% pruning sparsities, stacks each run performance_summary, and saves sweep
-% reports under results/pruning_sweeps/. It may take a long time because every
-% sparsity launches a full training run.
+% Runs sequential PNNN training jobs for configured pruning targets, stacks
+% each performance_summary, and saves sweep reports under results/pruning_sweeps/.
+% Supports percentage sparsity targets and final active trainable-parameter targets.
 
 clear; clc; close all;
 
@@ -11,18 +10,37 @@ scriptDir = fileparts(mfilename('fullpath'));
 repoRoot = fileparts(scriptDir);
 addpath(genpath(repoRoot));
 baseCfg = getPNNNConfig(repoRoot);
+helpers = denseFirstPruningSweepHelpers();
 
 %% ======================= SWEEP CONFIG =======================
-% Configure pruning sparsities in config/getPNNNConfig.m (cfg.sweep.sparsityList).
-if isfield(baseCfg, 'sweep') && isfield(baseCfg.sweep, 'sparsityList') && ...
-        ~isempty(baseCfg.sweep.sparsityList)
-    sparsityList = double(baseCfg.sweep.sparsityList(:)).';
+targetMode = helpers.pruningTargetMode(baseCfg);
+if targetMode == "sparsity"
+    if isfield(baseCfg, 'sweep') && isfield(baseCfg.sweep, 'sparsityList') && ...
+            ~isempty(baseCfg.sweep.sparsityList)
+        sparsityList = double(baseCfg.sweep.sparsityList(:)).';
+    else
+        sparsityList = [0 0.6];
+    end
+    helpers.validateSparsityList(sparsityList, "run_PNNN_pruning_sweep");
+    targetActiveParamList = [];
+    numRuns = numel(sparsityList);
 else
-    sparsityList = [0 0.6];
+    if ~isfield(baseCfg, 'sweep') || ...
+            ~isfield(baseCfg.sweep, 'targetActiveParamList')
+        error("run_PNNN_pruning_sweep:MissingTargetActiveParamList", ...
+            "cfg.sweep.targetActiveParamList is required when cfg.pruning.targetMode is 'activeTrainableParams'.");
+    end
+    targetActiveParamList = unique(sort( ...
+        double(baseCfg.sweep.targetActiveParamList(:)).', 'descend'), ...
+        'stable');
+    helpers.validateTargetActiveParamList(targetActiveParamList, ...
+        "run_PNNN_pruning_sweep");
+    sparsityList = [];
+    numRuns = numel(targetActiveParamList);
 end
-fineTuneEpochs = baseCfg.sweep.fineTuneEpochs;
 
-includeBias = baseCfg.sweep.includeBias;
+fineTuneEpochs = baseCfg.sweep.fineTuneEpochs;
+includeBiases = helpers.includeBiasesFromConfig(baseCfg);
 freezePruned = baseCfg.sweep.freezePruned;
 pruningScope = baseCfg.sweep.pruningScope;
 
@@ -39,9 +57,11 @@ gmpBaselineDir = fullfile(sweepFolder, char(baseCfg.gmp.baselineFolderName));
 warmStartSourceFile = resolveSweepWarmStartSource(baseCfg);
 
 sweepConfig = struct();
+sweepConfig.targetMode = targetMode;
 sweepConfig.sparsityList = sparsityList;
+sweepConfig.targetActiveParamList = targetActiveParamList;
 sweepConfig.fineTuneEpochs = fineTuneEpochs;
-sweepConfig.includeBias = includeBias;
+sweepConfig.includeBiases = includeBiases;
 sweepConfig.freezePruned = freezePruned;
 sweepConfig.pruningScope = pruningScope;
 sweepConfig.measurementName = measurementName;
@@ -54,29 +74,47 @@ sweepConfig.outputFiles = baseCfg.output;
 sweepConfig.warmStartSourceFile = warmStartSourceFile;
 
 save(fullfile(sweepFolder, 'sweep_config.mat'), 'sweepConfig');
-writeSweepConfigTxt(fullfile(sweepFolder, 'sweep_config.txt'), sweepConfig);
+helpers.writeSweepConfigTxt(fullfile(sweepFolder, 'sweep_config.txt'), ...
+    sweepConfig, "PNNN pruning sweep config");
 
 %% ======================= RUN SWEEP =======================
 performanceStack = struct([]);
 
-for sweepIdx = 1:numel(sparsityList)
-    sparsity = sparsityList(sweepIdx);
-    runLabel = sprintf('sparsity_%03d', round(100 * sparsity));
+for sweepIdx = 1:numRuns
+    if targetMode == "sparsity"
+        sparsity = sparsityList(sweepIdx);
+        runLabel = helpers.sparsityLabel("sparsity", sparsity);
+        targetText = sprintf('Sparsity target : %.2f %%', 100 * sparsity);
+    else
+        targetActiveParams = targetActiveParamList(sweepIdx);
+        runLabel = helpers.targetParamLabel("target_params", targetActiveParams);
+        targetText = sprintf('Target active trainable params: %d', ...
+            round(targetActiveParams));
+    end
+
     runResultsRoot = fullfile(sweepFolder, runLabel);
     if ~exist(runResultsRoot, 'dir')
         mkdir(runResultsRoot);
     end
 
     fprintf('\n================ PNNN pruning sweep %d/%d ================\n', ...
-        sweepIdx, numel(sparsityList));
-    fprintf('Sparsity target : %.2f %%\n', 100 * sparsity);
+        sweepIdx, numRuns);
+    fprintf('Target mode     : %s\n', char(targetMode));
+    fprintf('%s\n', targetText);
     fprintf('Results root    : %s\n', runResultsRoot);
     fprintf('GMP baseline dir: %s\n', gmpBaselineDir);
 
-    cfgOverrides = buildSweepOverrides( ...
-        measurementName, baseCfg.paths.measurementsDir, runResultsRoot, ...
-        gmpBaselineDir, sparsity, pruningScope, includeBias, ...
-        freezePruned, fineTuneEpochs, warmStartSourceFile);
+    if targetMode == "sparsity"
+        cfgOverrides = buildSweepOverrides( ...
+            measurementName, baseCfg.paths.measurementsDir, runResultsRoot, ...
+            gmpBaselineDir, sparsity, pruningScope, includeBiases, ...
+            freezePruned, fineTuneEpochs, warmStartSourceFile);
+    else
+        cfgOverrides = buildSweepTargetParamOverrides( ...
+            measurementName, baseCfg.paths.measurementsDir, runResultsRoot, ...
+            gmpBaselineDir, targetActiveParams, pruningScope, includeBiases, ...
+            freezePruned, fineTuneEpochs, warmStartSourceFile);
+    end
 
     train_PNNN_offline;
 
@@ -100,12 +138,47 @@ fprintf('\nSweep summary saved in: %s\n', sweepFolder);
 
 %% ======================= LOCAL HELPERS =======================
 function cfgOverrides = buildSweepOverrides(measurementName, measurementFolder, ...
-    runResultsRoot, gmpBaselineDir, sparsity, pruningScope, includeBias, ...
+    runResultsRoot, gmpBaselineDir, sparsity, pruningScope, includeBiases, ...
     freezePruned, fineTuneEpochs, warmStartSourceFile)
 
+cfgOverrides = baseSweepOverrides(measurementName, measurementFolder, ...
+    runResultsRoot, gmpBaselineDir, pruningScope, includeBiases, ...
+    freezePruned, fineTuneEpochs, warmStartSourceFile);
+cfgOverrides.pruning.targetMode = "sparsity";
+cfgOverrides.pruning.sparsity = sparsity;
+cfgOverrides.pruning.targetActiveTrainableParams = [];
+
+if sparsity <= 0
+    cfgOverrides.pruning.enabled = false;
+    cfgOverrides.pruning.fineTuneEnabled = false;
+    cfgOverrides.pruning.fineTuneEpochs = 0;
+else
+    cfgOverrides.pruning.enabled = true;
+end
+end
+
+function cfgOverrides = buildSweepTargetParamOverrides(measurementName, ...
+    measurementFolder, runResultsRoot, gmpBaselineDir, ...
+    targetActiveTrainableParams, pruningScope, includeBiases, freezePruned, ...
+    fineTuneEpochs, warmStartSourceFile)
+
+cfgOverrides = baseSweepOverrides(measurementName, measurementFolder, ...
+    runResultsRoot, gmpBaselineDir, pruningScope, includeBiases, ...
+    freezePruned, fineTuneEpochs, warmStartSourceFile);
+cfgOverrides.pruning.enabled = true;
+cfgOverrides.pruning.targetMode = "activeTrainableParams";
+cfgOverrides.pruning.sparsity = 0;
+cfgOverrides.pruning.targetActiveTrainableParams = ...
+    double(targetActiveTrainableParams);
+end
+
+function cfgOverrides = baseSweepOverrides(measurementName, measurementFolder, ...
+    runResultsRoot, gmpBaselineDir, pruningScope, includeBiases, ...
+    freezePruned, fineTuneEpochs, warmStartSourceFile)
 cfgOverrides = struct();
 cfgOverrides.data.measurementName = measurementName;
-cfgOverrides.data.measurementFile = fullfile(measurementFolder, [measurementName '.mat']);
+cfgOverrides.data.measurementFile = fullfile(measurementFolder, ...
+    [measurementName '.mat']);
 cfgOverrides.paths.resultsDir = runResultsRoot;
 cfgOverrides.runtime.clearCommandWindow = false;
 cfgOverrides.gmp.baselineDir = gmpBaselineDir;
@@ -115,20 +188,12 @@ if nargin >= 10 && strlength(string(warmStartSourceFile)) > 0
 end
 
 cfgOverrides.pruning = struct();
-cfgOverrides.pruning.sparsity = sparsity;
+cfgOverrides.pruning.enabled = true;
 cfgOverrides.pruning.scope = pruningScope;
-cfgOverrides.pruning.includeBias = includeBias;
+cfgOverrides.pruning.includeBiases = includeBiases;
 cfgOverrides.pruning.freezePruned = freezePruned;
-
-if sparsity <= 0
-    cfgOverrides.pruning.enabled = false;
-    cfgOverrides.pruning.fineTuneEnabled = false;
-    cfgOverrides.pruning.fineTuneEpochs = 0;
-else
-    cfgOverrides.pruning.enabled = true;
-    cfgOverrides.pruning.fineTuneEnabled = true;
-    cfgOverrides.pruning.fineTuneEpochs = fineTuneEpochs;
-end
+cfgOverrides.pruning.fineTuneEnabled = true;
+cfgOverrides.pruning.fineTuneEpochs = fineTuneEpochs;
 end
 
 function warmStartSourceFile = resolveSweepWarmStartSource(baseCfg)
@@ -138,7 +203,7 @@ if ~isfield(baseCfg, 'warmStart') || ~baseCfg.warmStart.enabled
 end
 if strlength(string(baseCfg.warmStart.sourceFile)) > 0
     warmStartSourceFile = string(baseCfg.warmStart.sourceFile);
-    fprintf('[INFO] Sweep warm start source fixed for all sparsities: %s\n', ...
+    fprintf('[INFO] Sweep warm start source fixed for all targets: %s\n', ...
         warmStartSourceFile);
     return;
 end
@@ -148,7 +213,7 @@ end
 
 warmStartSourceFile = findLatestSweepWarmStartDeploy( ...
     baseCfg.paths.resultsDir, baseCfg.output.deployFileName);
-fprintf('[INFO] Sweep warm start source fixed for all sparsities: %s\n', ...
+fprintf('[INFO] Sweep warm start source fixed for all targets: %s\n', ...
     warmStartSourceFile);
 end
 
@@ -159,7 +224,7 @@ end
 
 files = dir(fullfile(resultsRoot, '**', char(string(deployFileName))));
 if isempty(files)
-    error('No se encontró ningún %s en %s para warm start del sweep.', ...
+    error('No se encontro ningun %s en %s para warm start del sweep.', ...
         char(string(deployFileName)), resultsRoot);
 end
 [~, idx] = max([files.datenum]);
@@ -289,27 +354,4 @@ fprintf('\n%s\n', titleText);
 for k = 1:numel(lines)
     fprintf('%s\n', char(lines(k)));
 end
-end
-
-function writeSweepConfigTxt(configFile, sweepConfig)
-fid = fopen(configFile, 'w');
-if fid < 0
-    error('run_PNNN_pruning_sweep:ConfigOpenFailed', ...
-        'Could not open sweep config file: %s', configFile);
-end
-cleanupObj = onCleanup(@() fclose(fid));
-
-fprintf(fid, 'PNNN pruning sweep config\n');
-fprintf(fid, 'timestamp: %s\n', sweepConfig.timestamp);
-fprintf(fid, 'measurementName: %s\n', sweepConfig.measurementName);
-fprintf(fid, 'sparsityList: %s\n', mat2str(sweepConfig.sparsityList));
-fprintf(fid, 'fineTuneEpochs: %d\n', sweepConfig.fineTuneEpochs);
-fprintf(fid, 'includeBias: %d\n', sweepConfig.includeBias);
-fprintf(fid, 'freezePruned: %d\n', sweepConfig.freezePruned);
-fprintf(fid, 'pruningScope: %s\n', char(string(sweepConfig.pruningScope)));
-fprintf(fid, 'gmpBaselineDir: %s\n', sweepConfig.gmpBaselineDir);
-fprintf(fid, 'exportFigure: %d\n', sweepConfig.exportFigure);
-fprintf(fid, 'sweepFolder: %s\n', sweepConfig.sweepFolder);
-
-clear cleanupObj;
 end

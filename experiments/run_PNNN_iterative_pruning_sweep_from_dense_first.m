@@ -1,8 +1,8 @@
 % Script: run_PNNN_iterative_pruning_sweep_from_dense_first
 %
-% Runs a dense 0% PNNN first, then follows one monotonic pruning chain up to
-% the maximum requested sparsity. Only requested sparsities are reported as
-% checkpoints in the final sweep summary.
+% Runs a dense 0% PNNN first, then follows one monotonic pruning chain.
+% In sparsity mode, only requested sparsities are final checkpoints. In
+% active-parameter mode, targets are executed from larger to smaller counts.
 
 clear; clc; close all;
 
@@ -13,22 +13,57 @@ baseCfg = getPNNNConfig(repoRoot);
 helpers = denseFirstPruningSweepHelpers();
 
 %% ======================= SWEEP CONFIG =======================
-if isfield(baseCfg, 'sweep') && isfield(baseCfg.sweep, 'sparsityList') && ...
-        ~isempty(baseCfg.sweep.sparsityList)
-    sparsityList = double(baseCfg.sweep.sparsityList(:)).';
-else
-    sparsityList = [0 0.5];
-end
-helpers.validateSparsityList(sparsityList, ...
-    "run_PNNN_iterative_pruning_sweep_from_dense_first");
+targetMode = helpers.pruningTargetMode(baseCfg);
+if targetMode == "sparsity"
+    if isfield(baseCfg, 'sweep') && isfield(baseCfg.sweep, 'sparsityList') && ...
+            ~isempty(baseCfg.sweep.sparsityList)
+        sparsityList = double(baseCfg.sweep.sparsityList(:)).';
+    else
+        sparsityList = [0 0.5];
+    end
+    helpers.validateSparsityList(sparsityList, ...
+        "run_PNNN_iterative_pruning_sweep_from_dense_first");
 
-if isfield(baseCfg.sweep, 'iterativeStepSize') && ...
-        ~isempty(baseCfg.sweep.iterativeStepSize)
-    iterativeStepSize = double(baseCfg.sweep.iterativeStepSize);
+    if isfield(baseCfg.sweep, 'iterativeStepSize') && ...
+            ~isempty(baseCfg.sweep.iterativeStepSize)
+        iterativeStepSize = double(baseCfg.sweep.iterativeStepSize);
+    else
+        iterativeStepSize = 0.1;
+    end
+    validateIterativeStepSize(iterativeStepSize);
+
+    finalSparsityList = unique(sparsityList(sparsityList > 0), 'stable');
+    effectiveSparsityList = [0 finalSparsityList];
+    if isempty(finalSparsityList)
+        executedIterativeSparsityList = [];
+    else
+        executedIterativeSparsityList = buildIterativeStepList( ...
+            max(finalSparsityList), iterativeStepSize, finalSparsityList);
+    end
+    targetCheckpointMask = isSparsityMember( ...
+        executedIterativeSparsityList, finalSparsityList);
+    targetActiveParamList = [];
+    executedTargetActiveParamList = [];
+    targetActiveParamCheckpointMask = [];
 else
-    iterativeStepSize = 0.1;
+    if ~isfield(baseCfg, 'sweep') || ...
+            ~isfield(baseCfg.sweep, 'targetActiveParamList')
+        error("run_PNNN_iterative_pruning_sweep_from_dense_first:MissingTargetActiveParamList", ...
+            "cfg.sweep.targetActiveParamList is required when cfg.pruning.targetMode is 'activeTrainableParams'.");
+    end
+    targetActiveParamList = double(baseCfg.sweep.targetActiveParamList(:)).';
+    helpers.validateTargetActiveParamList(targetActiveParamList, ...
+        "run_PNNN_iterative_pruning_sweep_from_dense_first");
+    executedTargetActiveParamList = unique(sort(targetActiveParamList, ...
+        'descend'), 'stable');
+    targetActiveParamCheckpointMask = true(size(executedTargetActiveParamList));
+    sparsityList = 0;
+    effectiveSparsityList = 0;
+    finalSparsityList = [];
+    iterativeStepSize = NaN;
+    executedIterativeSparsityList = [];
+    targetCheckpointMask = [];
 end
-validateIterativeStepSize(iterativeStepSize);
 
 if isfield(baseCfg.sweep, 'iterativeFineTuneEpochs') && ...
         ~isempty(baseCfg.sweep.iterativeFineTuneEpochs)
@@ -37,7 +72,7 @@ else
     fineTuneEpochs = baseCfg.sweep.fineTuneEpochs;
 end
 
-includeBias = baseCfg.sweep.includeBias;
+includeBiases = helpers.includeBiasesFromConfig(baseCfg);
 freezePruned = baseCfg.sweep.freezePruned;
 pruningScope = baseCfg.sweep.pruningScope;
 measurementName = baseCfg.data.measurementName;
@@ -49,17 +84,6 @@ else
     sweepOutputRoot = baseCfg.sweep.outputRoot;
 end
 
-finalSparsityList = sparsityList(sparsityList > 0);
-effectiveSparsityList = [0 finalSparsityList];
-if isempty(finalSparsityList)
-    executedIterativeSparsityList = [];
-else
-    executedIterativeSparsityList = buildIterativeStepList( ...
-        max(finalSparsityList), iterativeStepSize, finalSparsityList);
-end
-targetCheckpointMask = isSparsityMember( ...
-    executedIterativeSparsityList, finalSparsityList);
-
 timestamp = char(datetime('now', 'Format', 'yyyyMMdd_HHmm'));
 sweepFolder = fullfile(sweepOutputRoot, timestamp);
 if ~exist(sweepFolder, 'dir')
@@ -70,6 +94,7 @@ gmpBaselineDir = fullfile(sweepFolder, char(baseCfg.gmp.baselineFolderName));
 
 sweepConfig = struct();
 sweepConfig.mode = "dense_first_iterative_chain";
+sweepConfig.targetMode = targetMode;
 sweepConfig.requestedSparsityList = sparsityList;
 sweepConfig.sparsityList = effectiveSparsityList;
 sweepConfig.finalSparsityList = finalSparsityList;
@@ -77,8 +102,11 @@ sweepConfig.iterativeStepSize = iterativeStepSize;
 sweepConfig.iterativeStepList = executedIterativeSparsityList;
 sweepConfig.executedIterativeSparsityList = executedIterativeSparsityList;
 sweepConfig.targetCheckpointMask = targetCheckpointMask;
+sweepConfig.requestedTargetActiveParamList = targetActiveParamList;
+sweepConfig.executedTargetActiveParamList = executedTargetActiveParamList;
+sweepConfig.targetActiveParamCheckpointMask = targetActiveParamCheckpointMask;
 sweepConfig.iterativeFineTuneEpochs = fineTuneEpochs;
-sweepConfig.includeBias = includeBias;
+sweepConfig.includeBiases = includeBiases;
 sweepConfig.freezePruned = freezePruned;
 sweepConfig.pruningScope = pruningScope;
 sweepConfig.measurementName = measurementName;
@@ -95,9 +123,15 @@ sweepConfig.iterativeWarmStartPolicy = "single_chain_previous_step_deploy";
 sweepConfig.prunedRunsSkipInitialTraining = true;
 sweepConfig.prunedRunsReuseNormStats = true;
 sweepConfig.prunedRunsUseLatestDeploy = false;
-sweepConfig.stepSourceDeployFiles = strings(size(executedIterativeSparsityList));
-sweepConfig.stepDeployFiles = strings(size(executedIterativeSparsityList));
-sweepConfig.finalDeployFiles = strings(size(finalSparsityList));
+if targetMode == "sparsity"
+    sweepConfig.stepSourceDeployFiles = strings(size(executedIterativeSparsityList));
+    sweepConfig.stepDeployFiles = strings(size(executedIterativeSparsityList));
+    sweepConfig.finalDeployFiles = strings(size(finalSparsityList));
+else
+    sweepConfig.stepSourceDeployFiles = strings(size(executedTargetActiveParamList));
+    sweepConfig.stepDeployFiles = strings(size(executedTargetActiveParamList));
+    sweepConfig.finalDeployFiles = strings(size(executedTargetActiveParamList));
+end
 
 save(fullfile(sweepFolder, 'sweep_config.mat'), 'sweepConfig');
 helpers.writeSweepConfigTxt(fullfile(sweepFolder, 'sweep_config.txt'), ...
@@ -111,12 +145,13 @@ if ~exist(denseRunResultsRoot, 'dir')
 end
 
 fprintf('\n================ PNNN dense-first iterative pruning sweep ================\n');
+fprintf('Target mode     : %s\n', char(targetMode));
 fprintf('Dense run       : %s\n', denseRunResultsRoot);
 fprintf('GMP baseline dir: %s\n', gmpBaselineDir);
 
 cfgOverrides = helpers.buildDenseRunOverrides( ...
     measurementName, baseCfg.paths.measurementsDir, denseRunResultsRoot, ...
-    gmpBaselineDir, pruningScope, includeBias, freezePruned);
+    gmpBaselineDir, pruningScope, includeBiases, freezePruned);
 
 train_PNNN_offline;
 
@@ -144,36 +179,62 @@ helpers.exportSweepSummary(sweepSummary, performanceStack, sweepFolder, ...
 previousDeployFile = denseDeployFile;
 fprintf('\n================ Single iterative pruning chain ================\n');
 fprintf('Dense deploy       : %s\n', denseDeployFile);
-fprintf('Executed steps     : %s\n', mat2str(executedIterativeSparsityList));
-fprintf('Target checkpoints : %s\n', mat2str(finalSparsityList));
+if targetMode == "sparsity"
+    fprintf('Executed steps     : %s\n', mat2str(executedIterativeSparsityList));
+    fprintf('Target checkpoints : %s\n', mat2str(finalSparsityList));
+    numSteps = numel(executedIterativeSparsityList);
+else
+    fprintf('Executed active-parameter targets: %s\n', ...
+        mat2str(executedTargetActiveParamList));
+    numSteps = numel(executedTargetActiveParamList);
+end
 
-for stepIdx = 1:numel(executedIterativeSparsityList)
-    stepSparsity = executedIterativeSparsityList(stepIdx);
-    stepLabel = helpers.sparsityLabel("iterative_step", stepSparsity);
-    runResultsRoot = fullfile(sweepFolder, stepLabel);
-    isTargetCheckpoint = targetCheckpointMask(stepIdx);
+for stepIdx = 1:numSteps
+    if targetMode == "sparsity"
+        stepSparsity = executedIterativeSparsityList(stepIdx);
+        stepLabel = helpers.sparsityLabel("iterative_step", stepSparsity);
+        isTargetCheckpoint = targetCheckpointMask(stepIdx);
+        targetText = sprintf('Cumulative sparsity : %.2f %%', ...
+            100 * stepSparsity);
+    else
+        targetActiveParams = executedTargetActiveParamList(stepIdx);
+        stepLabel = helpers.targetParamLabel("iterative_target_params", ...
+            targetActiveParams);
+        isTargetCheckpoint = true;
+        targetText = sprintf('Target active trainable params: %d', ...
+            round(targetActiveParams));
+    end
+
     if isTargetCheckpoint
         stepKind = "TARGET CHECKPOINT";
     else
         stepKind = "INTERMEDIATE";
     end
 
+    runResultsRoot = fullfile(sweepFolder, stepLabel);
     if ~exist(runResultsRoot, 'dir')
         mkdir(runResultsRoot);
     end
 
     fprintf('\n--- Iterative chain step %d/%d [%s] ---\n', ...
-        stepIdx, numel(executedIterativeSparsityList), char(stepKind));
-    fprintf('Cumulative sparsity : %.2f %%\n', 100 * stepSparsity);
+        stepIdx, numSteps, char(stepKind));
+    fprintf('%s\n', targetText);
     fprintf('Warm-start deploy   : %s\n', previousDeployFile);
     fprintf('Results root        : %s\n', runResultsRoot);
 
     sweepConfig.stepSourceDeployFiles(stepIdx) = string(previousDeployFile);
 
-    cfgOverrides = helpers.buildPrunedRunOverrides( ...
-        measurementName, baseCfg.paths.measurementsDir, runResultsRoot, ...
-        gmpBaselineDir, stepSparsity, pruningScope, includeBias, ...
-        freezePruned, fineTuneEpochs, previousDeployFile);
+    if targetMode == "sparsity"
+        cfgOverrides = helpers.buildPrunedRunOverrides( ...
+            measurementName, baseCfg.paths.measurementsDir, runResultsRoot, ...
+            gmpBaselineDir, stepSparsity, pruningScope, includeBiases, ...
+            freezePruned, fineTuneEpochs, previousDeployFile);
+    else
+        cfgOverrides = helpers.buildPrunedTargetParamRunOverrides( ...
+            measurementName, baseCfg.paths.measurementsDir, runResultsRoot, ...
+            gmpBaselineDir, targetActiveParams, pruningScope, includeBiases, ...
+            freezePruned, fineTuneEpochs, previousDeployFile);
+    end
 
     train_PNNN_offline;
 
@@ -184,8 +245,12 @@ for stepIdx = 1:numel(executedIterativeSparsityList)
     sweepConfig.stepDeployFiles(stepIdx) = string(previousDeployFile);
 
     if isTargetCheckpoint
-        targetIdx = find(abs(finalSparsityList - stepSparsity) <= 1e-12, ...
-            1, 'first');
+        if targetMode == "sparsity"
+            targetIdx = find(abs(finalSparsityList - stepSparsity) <= 1e-12, ...
+                1, 'first');
+        else
+            targetIdx = stepIdx;
+        end
         if ~isempty(targetIdx)
             sweepConfig.finalDeployFiles(targetIdx) = string(previousDeployFile);
         end
