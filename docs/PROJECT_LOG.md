@@ -1785,3 +1785,98 @@ Resultados:
 
 Pendiente:
 - Interpretar ACPR numerico solo despues de revisar que la senal evaluada esta efectivamente centrada en 0 Hz y que la definicion de canal adyacente de 100 MHz es la deseada para el informe final.
+
+---
+
+### 2026-05-06 — Pruning estructurado por grupos de features de entrada
+
+Objetivo:
+- Ampliar el pruning actual sin cambiar entrenamiento, arquitectura, features, normalizacion, split, GMP, metricas base ni semantica X/Y.
+- Mantener `structureMode="unstructured"` como baseline y anadir pruning estructurado usable con `structureMode="inputFeature"`.
+
+Archivos modificados:
+- `config/getPNNNConfig.m`
+- `train_PNNN_offline.m`
+- `experiments/denseFirstPruningSweepHelpers.m`
+- `experiments/run_PNNN_pruning_sweep.m`
+- `experiments/run_PNNN_pruning_sweep_from_dense_first.m`
+- `experiments/run_PNNN_iterative_pruning_sweep_from_dense_first.m`
+- `experiments/run_PNNN_layerwise_pruning_sweep_from_dense_first.m`
+- `toolbox/pruning/*.m`
+- `toolbox/reporting/*.m`
+- `docs/RUNBOOK.md`
+- `docs/PROJECT_LOG.md`
+
+Cambios realizados:
+- Se anadio `cfg.pruning.structureMode`, con opciones `unstructured`, `inputFeature`, `memoryTap`, `nonlinearOrder` y `tapOrder`.
+- Se anadio `cfg.pruning.structuredRanking`, `cfg.pruning.structuredTargetPolicy` y `cfg.pruning.hybridExactTarget=false`.
+- `inputFeature` poda columnas completas del primer tensor de pesos, una por feature de entrada, rankeadas por magnitud L1 por defecto.
+- Para target activo estructurado se usa `closestNotAbove`: se reporta `actualActiveTrainableParams` y `targetActiveParamGap = actual - target` porque el target puede no ser exacto.
+- Con `includeBiases=false`, los bias quedan protegidos y siguen contando dentro del target total activo.
+- Se anadio metadata/reporting para estructura, ranking, policy, gap, features activas/podadas y grupos activos/podados.
+- Los sweeps globales dense-first, iterativo y regular registran el modo estructurado. El sweep layer-wise valida y falla claramente si se intenta usar pruning estructurado.
+- Se anadio un mapa de features phase-normalized que refleja el orden real de `buildPhaseNormInput` para no inventar agrupaciones.
+- En `nonlinearOrder` y `tapOrder`, solo las features de envolvente con orden no lineal explicito entran en esos grupos; las componentes de fase real/imag quedan fuera de los grupos de orden.
+
+Comandos ejecutados por Codex:
+- `git status --short`
+- `git diff --stat`
+- `git diff --check`
+- `git diff --name-only -- measurements results generated_outputs`
+- `Get-ChildItem -Recurse -Include *.m | Select-String -Pattern '\bincludeBias\b'`
+- `matlab -batch "addpath(genpath(pwd)); cfg=getPNNNConfig(pwd); cfg.pruning.structureMode='inputFeature'; cfg.pruning.targetMode='activeTrainableParams'; cfg.pruning.targetActiveTrainableParams=1000; cfg.pruning=validatePruningConfig(cfg.pruning); disp(cfg.pruning)"`
+- Smoke MATLAB sintetico de mascaras estructuradas `inputFeature` con red `84 -> 25 -> 2`, sin datos ni entrenamiento.
+- Smoke MATLAB sintetico de modos `inputFeature`, `memoryTap`, `nonlinearOrder` y `tapOrder`, sin datos ni entrenamiento.
+- Smoke MATLAB sintetico de reporting compacto/display con struct de performance artificial.
+- `./tools/make_handoff.ps1 -TaskSummary "Implementar pruning estructurado por grupos de features de entrada" -RiskLevel "medium"`
+
+Resultados:
+- No MATLAB training was executed.
+- No MATLAB inference was executed.
+- No pruning, activation, iterative, layer-wise, or dense-first sweep script was executed by Codex.
+- No `measurements/`, `results/`, `generated_outputs/`, `.mat`, `.fig`, `deploy_package.mat` or generated result artifact was modified.
+- ACPR no fue modificado en esta intervencion; sigue configurado con canal de `100 MHz`.
+
+Pendiente:
+- Sergi debe ejecutar los sweeps estructurados manualmente para obtener resultados numericos.
+- `hybridExactTarget=true` queda reservado y bloqueado hasta implementarlo explicitamente.
+- Revisar empiricamente si las agrupaciones `memoryTap`, `nonlinearOrder` y `tapOrder` aportan utilidad frente a `inputFeature`.
+
+---
+
+### 2026-05-06 — Correcciones menores post-auditoria de pruning estructurado
+
+Objetivo:
+- Aplicar solo las correcciones menores aprobadas por la auditoria externa de structured pruning, sin cambiar arquitectura, features, normalizacion, split, GMP, warm start, ACPR ni semantica X/Y.
+
+Archivos modificados:
+- `toolbox/pruning/validatePruningConfig.m`
+- `docs/RUNBOOK.md`
+- `docs/PROJECT_LOG.md`
+
+Cambios realizados:
+- En pruning estructurado, `includeBiases=true` ahora emite un warning y se fuerza a `includeBiases=false`, porque los bias no se podan realmente por grupos de entrada y no deben reportarse como podables.
+- La validacion permite normalizar configs parciales para inspeccion ligera; si `targetMode='activeTrainableParams'` llega sin target real a la creacion de mascaras, se mantiene un error explicito.
+- Se documento que `inputFeature` poda grupos de columnas del primer tensor de pesos.
+- Se marcaron `memoryTap`, `nonlinearOrder` y `tapOrder` como modos experimentales/no validados empiricamente.
+- Se documento que `sparsityActual` en structured mode conserva un denominador compatible con el conteo general de pesos y puede ser menos interpretable.
+- Se recomendo priorizar `actualActiveTrainableParams`, `targetActiveParamGap`, `prunedInputFeatures / totalInputFeatures` y `activeFeatureGroups / totalFeatureGroups` para comparaciones.
+- No existia ya la entrada fantasma `Auditoria completa del repositorio y correccion de defaults`, asi que no hubo que eliminarla.
+
+Comandos ejecutados por Codex:
+- `git status --short`
+- `git diff --check`
+- `git diff --name-only -- measurements results generated_outputs`
+- `Get-ChildItem -Recurse -Include *.m | Select-String -Pattern '\bincludeBias\b'`
+- `matlab -batch "addpath(genpath(pwd)); cfg=getPNNNConfig(pwd); cfg.pruning.structureMode='inputFeature'; cfg.pruning.includeBiases=true; cfg.pruning=validatePruningConfig(cfg.pruning); disp(cfg.pruning.includeBiases)"`
+- `./tools/make_handoff.ps1 -TaskSummary "Aplicar correcciones menores post-auditoria structured pruning" -RiskLevel "low"`
+
+Resultados:
+- No MATLAB training was executed.
+- No MATLAB inference was executed.
+- No pruning, activation, iterative, layer-wise, or dense-first sweep script was executed by Codex.
+- No se inventaron resultados nuevos.
+- No `measurements/`, `results/`, `generated_outputs/`, `.mat`, `.fig`, `deploy_package.mat` or generated result artifact was modified.
+
+Pendiente:
+- Validar empiricamente los modos estructurados distintos de `inputFeature` antes de usarlos como conclusiones tecnicas.

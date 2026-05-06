@@ -168,6 +168,52 @@ pesos y bias entran en el conjunto podable y el target final cuenta ambos.
 Para comparar con literatura, reportar siempre los parámetros entrenables
 activos finales además del porcentaje de sparsity efectiva.
 
+Modo estructurado por feature de entrada:
+
+```matlab
+cfg.pruning.targetMode = 'activeTrainableParams';
+cfg.pruning.structureMode = 'inputFeature';
+cfg.pruning.structuredRanking = 'magnitude';
+cfg.pruning.structuredTargetPolicy = 'closestNotAbove';
+cfg.pruning.includeBiases = false;
+cfg.sweep.targetActiveParamList = [1400 1200 1000 800];
+```
+
+`structureMode='unstructured'` mantiene el pruning global por magnitud de
+pesos individuales. `structureMode='inputFeature'` poda grupos de columnas
+del primer tensor de pesos: cada feature de entrada queda activa o anulada
+como bloque. El ranking inicial usa magnitud L1 de los pesos asociados al
+grupo y elimina primero los grupos menos importantes.
+
+En pruning estructurado el target puede no ser exacto por la granularidad de
+los grupos. Con `structuredTargetPolicy='closestNotAbove'`, el codigo escoge
+el mayor numero de parametros entrenables activos que no supera el target.
+Interpretar siempre `actualActiveTrainableParams` junto con
+`targetActiveParamGap = actual - target`. Con `includeBiases=false`, los bias
+siguen protegidos pero cuentan dentro del target total.
+
+En pruning estructurado, `includeBiases=true` se fuerza a `false` durante la
+validacion porque los bias no se podan realmente por grupos de entrada. Esto
+evita que el reporting los cuente como parametros podables.
+
+`sparsityActual` en structured mode mantiene el denominador general de pesos
+para ser compatible con tablas existentes, por lo que puede ser menos
+interpretable que en pruning no estructurado. Para comparaciones con
+literatura o papers, priorizar estos campos:
+
+- `actualActiveTrainableParams`
+- `targetActiveParamGap`
+- `prunedInputFeatures / totalInputFeatures`
+- `activeFeatureGroups / totalFeatureGroups`
+
+Los modos `memoryTap`, `nonlinearOrder` y `tapOrder` usan el mapa de features
+phase-normalized construido desde `M`, `orders` y `featMode`, pero quedan como
+modos experimentales hasta validacion empirica. Si se usan fuera de un flujo
+con metadata de features, deben fallar con un error claro en vez de inventar
+agrupaciones. En `nonlinearOrder` y `tapOrder`, solo las features con orden no
+lineal explicito entran en esos grupos; las componentes de fase real/imag no
+se asignan artificialmente a un orden no lineal.
+
 Después:
 
 - mirar `sweep_summary_compact_display.csv`;
@@ -225,6 +271,9 @@ API vigente de pruning:
 
 - `cfg.pruning.targetMode = "sparsity" | "activeTrainableParams"`
 - `cfg.pruning.includeBiases = true | false`
+- `cfg.pruning.structureMode = "unstructured" | "inputFeature" | "memoryTap" | "nonlinearOrder" | "tapOrder"`
+- `cfg.pruning.structuredRanking = "magnitude" | "l1" | "l2"`
+- `cfg.pruning.structuredTargetPolicy = "closestNotAbove"`
 - `cfg.sweep.targetActiveParamList = [...]`
 - El alias legacy `includeBias` fue eliminado del codigo MATLAB; usar solo `includeBiases`.
 

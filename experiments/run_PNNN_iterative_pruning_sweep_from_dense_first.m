@@ -14,6 +14,9 @@ helpers = denseFirstPruningSweepHelpers();
 
 %% ======================= SWEEP CONFIG =======================
 targetMode = helpers.pruningTargetMode(baseCfg);
+structureMode = helpers.pruningStructureMode(baseCfg);
+structuredRanking = helpers.structuredRankingFromConfig(baseCfg);
+structuredTargetPolicy = helpers.structuredTargetPolicyFromConfig(baseCfg);
 if targetMode == "sparsity"
     if isfield(baseCfg, 'sweep') && isfield(baseCfg.sweep, 'sparsityList') && ...
             ~isempty(baseCfg.sweep.sparsityList)
@@ -75,6 +78,8 @@ end
 includeBiases = helpers.includeBiasesFromConfig(baseCfg);
 freezePruned = baseCfg.sweep.freezePruned;
 pruningScope = baseCfg.sweep.pruningScope;
+helpers.validateStructuredSweepCompatibility(structureMode, pruningScope, ...
+    "run_PNNN_iterative_pruning_sweep_from_dense_first");
 measurementName = baseCfg.data.measurementName;
 
 if isfield(baseCfg.sweep, 'iterativeOutputRoot') && ...
@@ -95,6 +100,9 @@ gmpBaselineDir = fullfile(sweepFolder, char(baseCfg.gmp.baselineFolderName));
 sweepConfig = struct();
 sweepConfig.mode = "dense_first_iterative_chain";
 sweepConfig.targetMode = targetMode;
+sweepConfig.structureMode = structureMode;
+sweepConfig.structuredRanking = structuredRanking;
+sweepConfig.structuredTargetPolicy = structuredTargetPolicy;
 sweepConfig.requestedSparsityList = sparsityList;
 sweepConfig.sparsityList = effectiveSparsityList;
 sweepConfig.finalSparsityList = finalSparsityList;
@@ -146,6 +154,9 @@ end
 
 fprintf('\n================ PNNN dense-first iterative pruning sweep ================\n');
 fprintf('Target mode     : %s\n', char(targetMode));
+fprintf('Structure mode  : %s\n', char(structureMode));
+fprintf('Structured rank : %s\n', char(structuredRanking));
+fprintf('Structured policy: %s\n', char(structuredTargetPolicy));
 fprintf('Dense run       : %s\n', denseRunResultsRoot);
 fprintf('GMP baseline dir: %s\n', gmpBaselineDir);
 
@@ -179,6 +190,7 @@ helpers.exportSweepSummary(sweepSummary, performanceStack, sweepFolder, ...
 previousDeployFile = denseDeployFile;
 fprintf('\n================ Single iterative pruning chain ================\n');
 fprintf('Dense deploy       : %s\n', denseDeployFile);
+fprintf('Structure mode     : %s\n', char(structureMode));
 if targetMode == "sparsity"
     fprintf('Executed steps     : %s\n', mat2str(executedIterativeSparsityList));
     fprintf('Target checkpoints : %s\n', mat2str(finalSparsityList));

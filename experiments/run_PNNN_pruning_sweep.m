@@ -14,6 +14,9 @@ helpers = denseFirstPruningSweepHelpers();
 
 %% ======================= SWEEP CONFIG =======================
 targetMode = helpers.pruningTargetMode(baseCfg);
+structureMode = helpers.pruningStructureMode(baseCfg);
+structuredRanking = helpers.structuredRankingFromConfig(baseCfg);
+structuredTargetPolicy = helpers.structuredTargetPolicyFromConfig(baseCfg);
 if targetMode == "sparsity"
     if isfield(baseCfg, 'sweep') && isfield(baseCfg.sweep, 'sparsityList') && ...
             ~isempty(baseCfg.sweep.sparsityList)
@@ -43,6 +46,8 @@ fineTuneEpochs = baseCfg.sweep.fineTuneEpochs;
 includeBiases = helpers.includeBiasesFromConfig(baseCfg);
 freezePruned = baseCfg.sweep.freezePruned;
 pruningScope = baseCfg.sweep.pruningScope;
+helpers.validateStructuredSweepCompatibility(structureMode, pruningScope, ...
+    "run_PNNN_pruning_sweep");
 
 measurementName = baseCfg.data.measurementName;
 sweepOutputRoot = baseCfg.sweep.outputRoot;
@@ -58,6 +63,9 @@ warmStartSourceFile = resolveSweepWarmStartSource(baseCfg);
 
 sweepConfig = struct();
 sweepConfig.targetMode = targetMode;
+sweepConfig.structureMode = structureMode;
+sweepConfig.structuredRanking = structuredRanking;
+sweepConfig.structuredTargetPolicy = structuredTargetPolicy;
 sweepConfig.sparsityList = sparsityList;
 sweepConfig.targetActiveParamList = targetActiveParamList;
 sweepConfig.fineTuneEpochs = fineTuneEpochs;
@@ -100,6 +108,9 @@ for sweepIdx = 1:numRuns
     fprintf('\n================ PNNN pruning sweep %d/%d ================\n', ...
         sweepIdx, numRuns);
     fprintf('Target mode     : %s\n', char(targetMode));
+    fprintf('Structure mode  : %s\n', char(structureMode));
+    fprintf('Structured rank : %s\n', char(structuredRanking));
+    fprintf('Structured policy: %s\n', char(structuredTargetPolicy));
     fprintf('%s\n', targetText);
     fprintf('Results root    : %s\n', runResultsRoot);
     fprintf('GMP baseline dir: %s\n', gmpBaselineDir);

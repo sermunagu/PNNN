@@ -6,7 +6,11 @@ function h = denseFirstPruningSweepHelpers()
 % final active trainable-parameter targets.
 
 h.pruningTargetMode = @pruningTargetMode;
+h.pruningStructureMode = @pruningStructureMode;
+h.structuredRankingFromConfig = @structuredRankingFromConfig;
+h.structuredTargetPolicyFromConfig = @structuredTargetPolicyFromConfig;
 h.includeBiasesFromConfig = @includeBiasesFromConfig;
+h.validateStructuredSweepCompatibility = @validateStructuredSweepCompatibility;
 h.validateSparsityList = @validateSparsityList;
 h.validateTargetActiveParamList = @validateTargetActiveParamList;
 h.sparsityLabel = @sparsityLabel;
@@ -38,11 +42,59 @@ if ~ismember(targetMode, validModes)
 end
 end
 
+function structureMode = pruningStructureMode(baseCfg)
+structureMode = "unstructured";
+if isstruct(baseCfg) && isfield(baseCfg, 'pruning') && ...
+        isfield(baseCfg.pruning, 'structureMode') && ...
+        strlength(string(baseCfg.pruning.structureMode)) > 0
+    structureMode = string(baseCfg.pruning.structureMode);
+end
+
+validModes = ["unstructured", "inputFeature", "memoryTap", ...
+    "nonlinearOrder", "tapOrder"];
+if ~ismember(structureMode, validModes)
+    error("denseFirstPruningSweepHelpers:InvalidStructureMode", ...
+        "cfg.pruning.structureMode must be 'unstructured', 'inputFeature', 'memoryTap', 'nonlinearOrder', or 'tapOrder'.");
+end
+end
+
+function ranking = structuredRankingFromConfig(baseCfg)
+ranking = "magnitude";
+if isstruct(baseCfg) && isfield(baseCfg, 'pruning') && ...
+        isfield(baseCfg.pruning, 'structuredRanking') && ...
+        strlength(string(baseCfg.pruning.structuredRanking)) > 0
+    ranking = string(baseCfg.pruning.structuredRanking);
+end
+end
+
+function policy = structuredTargetPolicyFromConfig(baseCfg)
+policy = "closestNotAbove";
+if isstruct(baseCfg) && isfield(baseCfg, 'pruning') && ...
+        isfield(baseCfg.pruning, 'structuredTargetPolicy') && ...
+        strlength(string(baseCfg.pruning.structuredTargetPolicy)) > 0
+    policy = string(baseCfg.pruning.structuredTargetPolicy);
+end
+end
+
 function includeBiases = includeBiasesFromConfig(baseCfg)
 includeBiases = false;
 if isstruct(baseCfg) && isfield(baseCfg, 'pruning') && ...
         isfield(baseCfg.pruning, 'includeBiases')
     includeBiases = logical(baseCfg.pruning.includeBiases);
+end
+end
+
+function validateStructuredSweepCompatibility(structureMode, pruningScope, ...
+    callerName)
+if nargin < 3 || strlength(string(callerName)) == 0
+    callerName = "denseFirstPruningSweepHelpers";
+end
+
+structureMode = string(structureMode);
+pruningScope = string(pruningScope);
+if structureMode ~= "unstructured" && pruningScope ~= "global"
+    error(char(string(callerName) + ":StructuredScopeUnsupported"), ...
+        "Structured pruning requires cfg.pruning.scope='global'. Layer-wise structured pruning is not defined.");
 end
 end
 

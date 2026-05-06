@@ -61,6 +61,7 @@ fprintf('%-33s: %s\n', 'Enabled', yesNo(enabled));
 if ~enabled
     fprintf('%-33s: %s\n', 'Method', 'N/A');
     fprintf('%-33s: %s\n', 'Target mode', 'N/A');
+    fprintf('%-33s: %s\n', 'Structure mode', 'N/A');
     fprintf('%-33s: %s\n', 'Target sparsity', 'N/A');
     fprintf('%-33s: %s\n', 'Actual sparsity', 'N/A');
     fprintf('%-33s: %s\n', 'Target active trainable params', 'N/A');
@@ -77,10 +78,17 @@ scope = lower(string(getField(pruningStats, 'scope', "global")));
 if strlength(scope) == 0
     scope = "global";
 end
+structureMode = string(getField(pruningStats, 'structureMode', ...
+    "unstructured"));
+if strlength(structureMode) == 0
+    structureMode = "unstructured";
+end
 
-method = sprintf('%s magnitude, weights only', char(scope));
+method = sprintf('%s %s magnitude, weights only', ...
+    char(scope), char(structureMode));
 if getField(pruningStats, 'includeBiases', false)
-    method = sprintf('%s magnitude, weights and biases', char(scope));
+    method = sprintf('%s %s magnitude, weights and biases', ...
+        char(scope), char(structureMode));
 end
 
 totalPodable = getField(pruningStats, 'totalPodableParams', NaN);
@@ -114,10 +122,25 @@ end
 
 fprintf('%-33s: %s\n', 'Method', method);
 fprintf('%-33s: %s\n', 'Target mode', textValue(getField(pruningStats, 'targetMode', "sparsity")));
+fprintf('%-33s: %s\n', 'Structure mode', textValue(structureMode));
+fprintf('%-33s: %s / %s\n', 'Structured ranking/policy', ...
+    textValue(getField(pruningStats, 'structuredRanking', "")), ...
+    textValue(getField(pruningStats, 'structuredTargetPolicy', "")));
 fprintf('%-33s: %s\n', 'Target sparsity', pctValue(getField(pruningStats, 'sparsityTarget', NaN)));
 fprintf('%-33s: %s\n', 'Actual sparsity', actualText);
 fprintf('%-33s: %s\n', 'Target active trainable params', intValue(getField(pruningStats, 'targetActiveTrainableParams', NaN)));
 fprintf('%-33s: %s\n', 'Actual active trainable params', intValue(getField(pruningStats, 'actualActiveTrainableParams', NaN)));
+fprintf('%-33s: %s\n', 'Target active param gap', intValue(getField(pruningStats, 'targetActiveParamGap', NaN)));
+if structureMode ~= "unstructured"
+    fprintf('%-33s: %s / %s / %s\n', 'Input features total/active/pruned', ...
+        intValue(getField(pruningStats, 'totalInputFeatures', NaN)), ...
+        intValue(getField(pruningStats, 'effectiveInputFeatures', NaN)), ...
+        intValue(getField(pruningStats, 'prunedInputFeatures', NaN)));
+    fprintf('%-33s: %s / %s / %s\n', 'Feature groups total/active/pruned', ...
+        intValue(getField(pruningStats, 'totalFeatureGroups', NaN)), ...
+        intValue(getField(pruningStats, 'activeFeatureGroups', NaN)), ...
+        intValue(getField(pruningStats, 'prunedFeatureGroups', NaN)));
+end
 fprintf('%-33s: %s\n', 'Active weights / biases', sprintf('%s / %s', ...
     intValue(getField(pruningStats, 'activeWeightParams', NaN)), ...
     intValue(getField(pruningStats, 'activeBiasParams', NaN))));

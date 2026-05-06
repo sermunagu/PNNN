@@ -36,6 +36,11 @@ stats.remainingTotalTrainableParams = counts.remainingTotalTrainableParams;
 stats.numPrunedParams = counts.actualPrunedPrunableParams;
 stats.numRemainingParams = counts.remainingPrunableParams;
 stats.sparsityActual = counts.actualPrunableSparsity;
+if isfield(stats, 'targetActiveTrainableParams') && ...
+        isfinite(stats.targetActiveTrainableParams)
+    stats.targetActiveParamGap = counts.actualActiveTrainableParams - ...
+        stats.targetActiveTrainableParams;
+end
 
 if ~isfield(stats, 'targetMode') || strlength(string(stats.targetMode)) == 0
     stats.targetMode = "sparsity";
@@ -47,6 +52,7 @@ if ~logical(stats.enabled)
     stats.actualPrunableSparsity = 0;
     stats.targetActiveTrainableParams = counts.totalTrainableParams;
     stats.targetActivePrunableParams = counts.totalPrunableParams;
+    stats.targetActiveParamGap = 0;
     stats.prunedPrunableParams = 0;
     stats.actualPrunedPrunableParams = 0;
     stats.numPrunedParams = 0;
@@ -58,5 +64,15 @@ if ~logical(stats.enabled)
     stats.activeBiasParams = counts.totalBiasParams;
     stats.prunedWeightParams = 0;
     stats.prunedBiasParams = 0;
+    if ~isfield(stats, 'totalInputFeatures') || ...
+            ~isfinite(stats.totalInputFeatures)
+        stats.totalInputFeatures = NaN;
+        stats.effectiveInputFeatures = NaN;
+        stats.activeInputFeatures = NaN;
+        stats.prunedInputFeatures = NaN;
+        stats.totalFeatureGroups = NaN;
+        stats.activeFeatureGroups = NaN;
+        stats.prunedFeatureGroups = NaN;
+    end
 end
 end

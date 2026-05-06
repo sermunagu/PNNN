@@ -14,6 +14,9 @@ helpers = denseFirstPruningSweepHelpers();
 
 %% ======================= SWEEP CONFIG =======================
 targetMode = helpers.pruningTargetMode(baseCfg);
+structureMode = helpers.pruningStructureMode(baseCfg);
+structuredRanking = helpers.structuredRankingFromConfig(baseCfg);
+structuredTargetPolicy = helpers.structuredTargetPolicyFromConfig(baseCfg);
 if targetMode == "sparsity"
     if isfield(baseCfg, 'sweep') && isfield(baseCfg.sweep, 'sparsityList') && ...
             ~isempty(baseCfg.sweep.sparsityList)
@@ -47,6 +50,8 @@ fineTuneEpochs = baseCfg.sweep.fineTuneEpochs;
 includeBiases = helpers.includeBiasesFromConfig(baseCfg);
 freezePruned = baseCfg.sweep.freezePruned;
 pruningScope = "layerwise";
+helpers.validateStructuredSweepCompatibility(structureMode, pruningScope, ...
+    "run_PNNN_layerwise_pruning_sweep_from_dense_first");
 measurementName = baseCfg.data.measurementName;
 
 if isfield(baseCfg.sweep, 'layerwiseOutputRoot') && ...
@@ -67,6 +72,9 @@ gmpBaselineDir = fullfile(sweepFolder, char(baseCfg.gmp.baselineFolderName));
 sweepConfig = struct();
 sweepConfig.mode = "dense_first_layerwise";
 sweepConfig.targetMode = targetMode;
+sweepConfig.structureMode = structureMode;
+sweepConfig.structuredRanking = structuredRanking;
+sweepConfig.structuredTargetPolicy = structuredTargetPolicy;
 sweepConfig.requestedSparsityList = sparsityList;
 sweepConfig.sparsityList = effectiveSparsityList;
 sweepConfig.prunedSparsityList = prunedSparsityList;
@@ -105,6 +113,7 @@ end
 
 fprintf('\n================ PNNN dense-first layer-wise pruning sweep ================\n');
 fprintf('Target mode     : %s\n', char(targetMode));
+fprintf('Structure mode  : %s\n', char(structureMode));
 fprintf('Dense run       : %s\n', denseRunResultsRoot);
 fprintf('GMP baseline dir: %s\n', gmpBaselineDir);
 

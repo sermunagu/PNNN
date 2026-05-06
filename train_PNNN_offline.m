@@ -108,6 +108,12 @@ end
 
 Ns = size(X_in, 2);
 inputDim = size(X_in, 1);
+featureMap = buildPhaseNormFeatureMap(cfg.model.M, cfg.model.orders, ...
+    cfg.model.featMode);
+if numel(featureMap) ~= inputDim
+    error('Feature map size mismatch: featureMap=%d, inputDim=%d.', ...
+        numel(featureMap), inputDim);
+end
 
 inputMtxAll  = X_in.';                         % N x D
 outputMtxAll = [Y_out(1,:).' Y_out(2,:).'];    % N x 2
@@ -279,8 +285,13 @@ pruningState = struct();
 pruningFineTuneInfo = struct();
 
 if cfg.pruning.enabled
-    fprintf("\n--- Magnitude pruning (%s) ---\n", char(string(cfg.pruning.scope)));
-    [pruningState, pruningStats] = createMagnitudePruningMasks(netDPD, cfg.pruning);
+    fprintf("\n--- Magnitude pruning (%s, %s) ---\n", ...
+        char(string(cfg.pruning.scope)), char(string(cfg.pruning.structureMode)));
+    pruningCfgForMasks = cfg.pruning;
+    pruningCfgForMasks.inputFeatureMap = featureMap;
+    pruningCfgForMasks.inputDim = inputDim;
+    [pruningState, pruningStats] = createMagnitudePruningMasks( ...
+        netDPD, pruningCfgForMasks);
     netDPD = applyLearnableMasks(netDPD, pruningState.masks);
     [~, pruningStats] = checkPruningMaskIntegrity( ...
         netDPD, pruningState, pruningStats, "after_pruning");
@@ -434,10 +445,15 @@ metadata.pruning_sparsityTarget = pruningStats.sparsityTarget;
 metadata.pruning_sparsityActual = pruningStats.sparsityActual;
 metadata.pruning_scope = pruningStats.scope;
 metadata.pruning_targetMode = pruningStats.targetMode;
+metadata.pruning_structureMode = pruningStats.structureMode;
+metadata.pruning_structuredRanking = pruningStats.structuredRanking;
+metadata.pruning_structuredTargetPolicy = pruningStats.structuredTargetPolicy;
+metadata.pruning_hybridExactTarget = pruningStats.hybridExactTarget;
 metadata.pruning_includeBiases = pruningStats.includeBiases;
 metadata.pruning_freezePruned = pruningStats.freezePruned;
 metadata.pruning_targetActiveTrainableParams = pruningStats.targetActiveTrainableParams;
 metadata.pruning_targetActivePrunableParams = pruningStats.targetActivePrunableParams;
+metadata.pruning_targetActiveParamGap = pruningStats.targetActiveParamGap;
 metadata.pruning_totalTrainableParams = pruningStats.totalTrainableParams;
 metadata.pruning_totalPrunableParams = pruningStats.totalPrunableParams;
 metadata.pruning_protectedTrainableParams = pruningStats.protectedTrainableParams;
@@ -453,6 +469,13 @@ metadata.pruning_activeWeightParams = pruningStats.activeWeightParams;
 metadata.pruning_activeBiasParams = pruningStats.activeBiasParams;
 metadata.pruning_prunedWeightParams = pruningStats.prunedWeightParams;
 metadata.pruning_prunedBiasParams = pruningStats.prunedBiasParams;
+metadata.pruning_totalInputFeatures = pruningStats.totalInputFeatures;
+metadata.pruning_effectiveInputFeatures = pruningStats.effectiveInputFeatures;
+metadata.pruning_activeInputFeatures = pruningStats.activeInputFeatures;
+metadata.pruning_prunedInputFeatures = pruningStats.prunedInputFeatures;
+metadata.pruning_totalFeatureGroups = pruningStats.totalFeatureGroups;
+metadata.pruning_activeFeatureGroups = pruningStats.activeFeatureGroups;
+metadata.pruning_prunedFeatureGroups = pruningStats.prunedFeatureGroups;
 metadata.pruning_totalPodableParams = pruningStats.totalPodableParams;
 metadata.pruning_numPrunedParams = pruningStats.numPrunedParams;
 metadata.pruning_numRemainingParams = pruningStats.numRemainingParams;

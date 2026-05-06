@@ -18,6 +18,10 @@ if ~isa(net, 'dlnetwork')
 end
 
 pruningCfg = normalizePruningCfgForMasks(pruningCfg);
+if string(pruningCfg.structureMode) ~= "unstructured"
+    [pruningState, stats] = createStructuredPruningMasks(net, pruningCfg);
+    return;
+end
 learnables = net.Learnables;
 nLearnables = height(learnables);
 masks = cell(nLearnables, 1);
@@ -78,6 +82,10 @@ actualPrunableSparsity = paramCounts.actualPrunableSparsity;
 stats.scope = char(scope);
 stats.includeBiases = pruningCfg.includeBiases;
 stats.targetMode = char(pruningCfg.targetMode);
+stats.structureMode = char(pruningCfg.structureMode);
+stats.structuredRanking = char(pruningCfg.structuredRanking);
+stats.structuredTargetPolicy = char(pruningCfg.structuredTargetPolicy);
+stats.hybridExactTarget = logical(pruningCfg.hybridExactTarget);
 stats.sparsityTarget = targetPrunableSparsity;
 stats.sparsityActual = actualPrunableSparsity;
 stats.totalPodableParams = totalPrunableParams;
@@ -88,6 +96,8 @@ stats.totalWeightParams = paramCounts.totalWeightParams;
 stats.totalBiasParams = paramCounts.totalBiasParams;
 stats.targetActiveTrainableParams = targetActiveTrainableParams;
 stats.targetActivePrunableParams = targetActivePrunableParams;
+stats.targetActiveParamGap = actualActiveTrainableParams - ...
+    targetActiveTrainableParams;
 stats.prunedPrunableParams = prunedPrunableParams;
 stats.remainingPrunableParams = remainingPrunableParams;
 stats.remainingTotalTrainableParams = remainingPrunableParams + ...
@@ -114,6 +124,9 @@ pruningState.parameterPruned = parameterPruned;
 pruningState.includeBiases = pruningCfg.includeBiases;
 pruningState.scope = char(scope);
 pruningState.targetMode = char(pruningCfg.targetMode);
+pruningState.structureMode = char(pruningCfg.structureMode);
+pruningState.structuredRanking = char(pruningCfg.structuredRanking);
+pruningState.structuredTargetPolicy = char(pruningCfg.structuredTargetPolicy);
 pruningState.targetActiveTrainableParams = targetActiveTrainableParams;
 
 fprintf("Pruning scope : %s\n", char(scope));
@@ -148,11 +161,30 @@ end
 if ~isfield(pruningCfg, 'includeBiases') || isempty(pruningCfg.includeBiases)
     pruningCfg.includeBiases = false;
 end
+if ~isfield(pruningCfg, 'structureMode') || isempty(pruningCfg.structureMode)
+    pruningCfg.structureMode = "unstructured";
+end
+if ~isfield(pruningCfg, 'structuredRanking') || ...
+        isempty(pruningCfg.structuredRanking)
+    pruningCfg.structuredRanking = "magnitude";
+end
+if ~isfield(pruningCfg, 'structuredTargetPolicy') || ...
+        isempty(pruningCfg.structuredTargetPolicy)
+    pruningCfg.structuredTargetPolicy = "closestNotAbove";
+end
+if ~isfield(pruningCfg, 'hybridExactTarget') || ...
+        isempty(pruningCfg.hybridExactTarget)
+    pruningCfg.hybridExactTarget = false;
+end
 
 pruningCfg.targetMode = string(pruningCfg.targetMode);
 pruningCfg.sparsity = double(pruningCfg.sparsity);
 pruningCfg.scope = string(pruningCfg.scope);
 pruningCfg.includeBiases = logical(pruningCfg.includeBiases);
+pruningCfg.structureMode = string(pruningCfg.structureMode);
+pruningCfg.structuredRanking = string(pruningCfg.structuredRanking);
+pruningCfg.structuredTargetPolicy = string(pruningCfg.structuredTargetPolicy);
+pruningCfg.hybridExactTarget = logical(pruningCfg.hybridExactTarget);
 end
 
 function [targetActiveTrainableParams, targetActivePrunableParams, ...
@@ -163,6 +195,11 @@ function [targetActiveTrainableParams, targetActivePrunableParams, ...
 if string(pruningCfg.targetMode) == "activeTrainableParams"
     targetActiveTrainableParams = double( ...
         pruningCfg.targetActiveTrainableParams);
+    if isempty(targetActiveTrainableParams) || ...
+            ~isscalar(targetActiveTrainableParams) || ...
+            ~isfinite(targetActiveTrainableParams)
+        error("cfg.pruning.targetActiveTrainableParams must be a positive integer scalar when targetMode is 'activeTrainableParams'.");
+    end
     if targetActiveTrainableParams < protectedTrainableParams
         error("Requested active trainable parameter target is smaller than the protected parameter count. Either increase the target or enable bias pruning / include more parameters in the prunable set.");
     end
