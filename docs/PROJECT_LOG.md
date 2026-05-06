@@ -1880,3 +1880,37 @@ Resultados:
 
 Pendiente:
 - Validar empiricamente los modos estructurados distintos de `inputFeature` antes de usarlos como conclusiones tecnicas.
+
+---
+
+### 2026-05-06 — Comentarios inline en configuracion principal
+
+Objetivo:
+- Mejorar la documentacion interna de `config/getPNNNConfig.m` sin cambiar valores por defecto ni comportamiento de entrenamiento, pruning, GMP, warm start, ACPR, features, split o semantica X/Y.
+
+Archivos modificados:
+- `config/getPNNNConfig.m`
+- `docs/RUNBOOK.md`
+- `docs/PROJECT_LOG.md`
+
+Cambios realizados:
+- Se revisaron los validadores y scripts que consumen la configuracion principal para documentar valores discretos reales.
+- Se añadieron comentarios inline concisos en bloques de paths, data, split, model, training, metrics, pruning, GMP, output, online, warm start y sweeps.
+- Se documento en el runbook que `getPNNNConfig.m` contiene comentarios inline con los valores admitidos para los principales modos.
+- No se cambiaron defaults, nombres de campos, logica MATLAB ni resultados documentados.
+
+Comandos ejecutados por Codex:
+- `git diff --check`
+- `git diff --name-only -- measurements results generated_outputs`
+- `Get-ChildItem -Recurse -Include *.m | Select-String -Pattern '\bincludeBias\b'`
+- `matlab -batch "addpath(genpath(pwd)); cfg=getPNNNConfig(pwd); cfg.pruning=validatePruningConfig(cfg.pruning); disp(cfg.pruning.targetMode); disp(cfg.pruning.structureMode)"`
+- `./tools/make_handoff.ps1 -TaskSummary "Documentar inline valores de configuracion principal" -RiskLevel "low"`
+
+Resultados:
+- No MATLAB training was executed.
+- No MATLAB inference was executed.
+- No pruning, activation, iterative, layer-wise, or dense-first sweep script was executed by Codex.
+- No `measurements/`, `results/`, `generated_outputs/`, `.mat`, `.fig`, `deploy_package.mat` or generated result artifact was modified.
+
+Pendiente:
+- Mantener los comentarios sincronizados si se añaden nuevos modos o flags reales.

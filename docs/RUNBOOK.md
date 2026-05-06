@@ -31,6 +31,17 @@ Este documento no sustituye a `README.md`. El `README.md` explica el proyecto; e
 
 ---
 
+## Configuracion principal
+
+La configuracion oficial esta centralizada en `config/getPNNNConfig.m`. Ese
+fichero contiene comentarios inline concisos con los valores admitidos para
+los principales modos, flags y listas de sweep. Si se cambia un valor discreto
+como `mappingMode`, `featMode`, `actType`, `pruning.targetMode`,
+`pruning.structureMode` o `warmStart.sourceType`, revisar primero esos
+comentarios y despues el validador/script correspondiente.
+
+---
+
 ## Handoff local para ChatGPT
 
 Desde la raíz del repo:
