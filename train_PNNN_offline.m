@@ -563,6 +563,11 @@ end
 if ~isfield(acpr, 'status') || strcmp(string(acpr.status), "OK")
     return;
 end
+if strcmp(string(acpr.status), "WARN")
+    fprintf('ACPR %s status=%s: %s\n', char(string(label)), ...
+        char(string(acpr.status)), char(string(acpr.message)));
+    return;
+end
 warning('train_PNNN_offline:ACPRMetric', ...
     'ACPR %s status=%s: %s', char(string(label)), ...
     char(string(acpr.status)), char(string(acpr.message)));

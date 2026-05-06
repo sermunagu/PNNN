@@ -72,10 +72,10 @@ cfg.metrics.evm.normalizePower = false;        % Time-domain EVM; not OFDM-demod
 
 cfg.metrics.acpr = struct();
 cfg.metrics.acpr.enabled = true;
-cfg.metrics.acpr.channelBandwidthHz = [];      % Signal/channel bandwidth; configure for meaningful ACPR.
-cfg.metrics.acpr.mainChannelBandwidthHz = [];  % Main band width; empty uses channelBandwidthHz.
-cfg.metrics.acpr.adjacentBandwidthHz = [];     % Adjacent band width; empty uses channelBandwidthHz.
-cfg.metrics.acpr.adjacentSpacingHz = [];       % Adjacent centers at +/- spacing and +/- 2*spacing.
+cfg.metrics.acpr.channelBandwidthHz = 100e6;      % Confirmed signal/channel bandwidth.
+cfg.metrics.acpr.mainChannelBandwidthHz = 100e6;  % Main band: center +/- 50 MHz.
+cfg.metrics.acpr.adjacentBandwidthHz = 100e6;     % Adjacent channel width.
+cfg.metrics.acpr.adjacentSpacingHz = 100e6;       % Adjacent centers at +/-100 and +/-200 MHz.
 cfg.metrics.acpr.nfft = 16384;
 cfg.metrics.acpr.window = "hann";
 cfg.metrics.acpr.centerFrequencyHz = 0;        % Main channel center frequency in baseband Hz.

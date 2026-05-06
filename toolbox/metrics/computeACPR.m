@@ -5,7 +5,8 @@ function acpr = computeACPR(signal, fs, acprCfg)
 % 2 are centered at +/- adjacentSpacingHz and +/- 2*adjacentSpacingHz. ACPR
 % is reported as P_adjacent_dB - P_main_dB, usually a negative value. The
 % spectrum is estimated by averaging Welch-style windowed periodograms over
-% all finite samples.
+% all finite samples. Bands outside Nyquist are reported as NaN instead of
+% being partially integrated.
 
 acpr = emptyACPR("UNSET", "ACPR not computed.");
 
@@ -66,13 +67,13 @@ if strlength(mainMessage) > 0 || ~isfinite(mainPower) || mainPower <= 0
 end
 
 [left1Power, msgL1] = bandPower(freq, powerSpectrum, df, ...
-    centerHz - adjSpacing, adjBw, fs);
+    centerHz - adjSpacing, adjBw, fs, "L1");
 [right1Power, msgR1] = bandPower(freq, powerSpectrum, df, ...
-    centerHz + adjSpacing, adjBw, fs);
+    centerHz + adjSpacing, adjBw, fs, "R1");
 [left2Power, msgL2] = bandPower(freq, powerSpectrum, df, ...
-    centerHz - 2*adjSpacing, adjBw, fs);
+    centerHz - 2*adjSpacing, adjBw, fs, "L2");
 [right2Power, msgR2] = bandPower(freq, powerSpectrum, df, ...
-    centerHz + 2*adjSpacing, adjBw, fs);
+    centerHz + 2*adjSpacing, adjBw, fs, "R2");
 
 mainPowerDb = 10 * log10(mainPower);
 acpr.mainPower_dB = mainPowerDb;
@@ -193,22 +194,25 @@ psdAvg = psdAvg / segmentCount;
 freq = ((-nfft/2):(nfft/2-1)).' * (fs / nfft);
 end
 
-function [powerValue, message] = bandPower(freq, powerSpectrum, df, centerHz, bandwidthHz, fs)
+function [powerValue, message] = bandPower(freq, powerSpectrum, df, centerHz, bandwidthHz, fs, bandLabel)
+if nargin < 7 || strlength(string(bandLabel)) == 0
+    bandLabel = "ACPR";
+end
 message = "";
 fMin = centerHz - bandwidthHz/2;
 fMax = centerHz + bandwidthHz/2;
 if fMin < -fs/2 || fMax > fs/2
     powerValue = NaN;
-    message = string(sprintf("Band %.6g..%.6g Hz outside Nyquist.", ...
-        fMin, fMax));
+    message = string(sprintf("%s band %.6g..%.6g Hz outside Nyquist.", ...
+        char(string(bandLabel)), fMin, fMax));
     return;
 end
 
 mask = freq >= fMin & freq < fMax;
 if ~any(mask)
     powerValue = NaN;
-    message = string(sprintf("Band %.6g..%.6g Hz has no FFT bins.", ...
-        fMin, fMax));
+    message = string(sprintf("%s band %.6g..%.6g Hz has no FFT bins.", ...
+        char(string(bandLabel)), fMin, fMax));
     return;
 end
 powerValue = sum(powerSpectrum(mask)) * df;

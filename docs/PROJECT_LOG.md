@@ -1738,3 +1738,50 @@ Interpretación:
 Pendiente:
 - ...
 ```
+
+---
+
+### 2026-05-06 — Configuracion ACPR con canal de 100 MHz
+
+Objetivo:
+- Configurar ACPR con el ancho de canal fisico confirmado de 100 MHz y dejar el comportamiento fuera de banda controlado.
+
+Archivos modificados:
+- `config/getPNNNConfig.m`
+- `toolbox/metrics/computeACPR.m`
+- `train_PNNN_offline.m`
+- `docs/RUNBOOK.md`
+- `docs/PROJECT_LOG.md`
+
+Cambios realizados:
+- Se fijo `cfg.metrics.acpr.channelBandwidthHz = 100e6`, `mainChannelBandwidthHz = 100e6`, `adjacentBandwidthHz = 100e6` y `adjacentSpacingHz = 100e6`.
+- Se conservo la semantica baseband centrada en `centerFrequencyHz = 0`.
+- Se etiquetaron los mensajes de bandas ACPR fuera de Nyquist como L1/R1/L2/R2 para que el status sea revisable.
+- Se mantuvo la validacion defensiva: una banda que cae fuera de `[-fs/2, fs/2]` devuelve `NaN` y no se integra parcialmente.
+- Se cambio el reporte local para que el estado ACPR `WARN` se imprima como status controlado en vez de warning MATLAB repetitivo.
+- Con `fs = 491.520 MHz`, L1/R1 son validos para offset de `100 MHz`; L2/R2 quedan fuera de Nyquist y deben reportarse como `N/A`/fuera de banda.
+- No se cambiaron arquitectura, pruning, training, GMP, features, normalizacion, split ni semantica X/Y.
+
+Recomendaciones de Antigravity no aplicadas:
+- No se refactorizaron helpers de sweeps ni warm start porque no estan relacionados con ACPR y el usuario pidio evitar refactors grandes.
+- No se tocaron headers de `GVG/`, ubicacion de `SNN/`, particion de `PROJECT_LOG.md` ni patches locales porque quedan fuera del alcance ACPR.
+- No se cambio el default de pruning `targetMode` en esta intervencion porque afectaria defaults de pruning y el usuario pidio no modificar pruning en este pase.
+
+Comandos ejecutados por Codex:
+- Inspeccion ligera de auditoria externa, configuracion y funciones ACPR.
+- `git status --short`
+- `git diff --check`
+- `git diff --name-only -- measurements results generated_outputs`
+- `Get-ChildItem -Recurse -Include *.m | Select-String -Pattern '\bincludeBias\b'`
+- `matlab -batch "addpath(genpath(pwd)); cfg=getPNNNConfig(pwd); disp(cfg.metrics);"`
+- Check MATLAB ligero de `computeACPR` con senal sintetica y `fs = 491.52e6`.
+- `.\tools\make_handoff.ps1 -TaskSummary "Configurar ACPR con canal de 100 MHz y validar bandas fuera de Nyquist" -RiskLevel "low"`
+
+Resultados:
+- No MATLAB training was executed.
+- No MATLAB inference was executed.
+- No pruning, activation, iterative, layer-wise, or dense-first sweep script was executed by Codex.
+- No `measurements/`, `results/`, `generated_outputs/`, `.mat`, `.fig`, `deploy_package.mat` or generated result artifact was modified.
+
+Pendiente:
+- Interpretar ACPR numerico solo despues de revisar que la senal evaluada esta efectivamente centrada en 0 Hz y que la definicion de canal adyacente de 100 MHz es la deseada para el informe final.
