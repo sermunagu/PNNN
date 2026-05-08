@@ -66,22 +66,6 @@ cfg.training.executionEnvironment = "auto";            % trainingOptions Executi
 cfg.runtime = struct();
 cfg.runtime.clearCommandWindow = true;                 % true | false; clear command window.
 
-cfg.metrics = struct();
-cfg.metrics.evm = struct();
-cfg.metrics.evm.enabled = true;                        % true | false; compute time-domain EVM.
-cfg.metrics.evm.normalizePower = false;                % true | false; not OFDM-demodulated NR EVM.
-
-cfg.metrics.acpr = struct();
-cfg.metrics.acpr.enabled = true;                      % true | false; compute ACPR.
-cfg.metrics.acpr.channelBandwidthHz = 100e6;          % Hz; confirmed signal/channel bandwidth.
-cfg.metrics.acpr.mainChannelBandwidthHz = 100e6;      % Hz; main band center +/- 50 MHz.
-cfg.metrics.acpr.adjacentBandwidthHz = 100e6;         % Hz; adjacent channel width.
-cfg.metrics.acpr.adjacentSpacingHz = 100e6;           % Hz; adjacent centers at +/-100 and +/-200 MHz.
-cfg.metrics.acpr.nfft = 16384;                        % FFT length for Welch estimate.
-cfg.metrics.acpr.window = "hann";                     % "hann"; other names use rectangular fallback.
-cfg.metrics.acpr.centerFrequencyHz = 0;               % Hz; main channel center in baseband.
-cfg.metrics.acpr.outOfBandPolicy = "nan";             % Current behavior: NaN for out-of-band bands.
-
 cfg.pruning = struct();
 cfg.pruning.enabled = true;                           % true | false; enable pruning phase.
 cfg.pruning.sparsity = 0.3;                           % [0,1]; used when targetMode='sparsity'.
@@ -89,9 +73,7 @@ cfg.pruning.targetMode = 'activeTrainableParams';     % 'sparsity' | 'activeTrai
 cfg.pruning.targetActiveTrainableParams = [1200];     % [] or positive integer for direct train target.
 cfg.pruning.scope = "global";                         % "global" | "layerwise"; structured requires global.
 cfg.pruning.includeBiases = false;                    % true | false; forced false for structured pruning.
-% "memoryTap", "nonlinearOrder", and "tapOrder" are experimental modes.
-% "unstructured" | "inputFeature" | "memoryTap" | "nonlinearOrder" | "tapOrder".
-cfg.pruning.structureMode = "unstructured";
+cfg.pruning.structureMode = "unstructured";           % "unstructured" | "inputFeature" | "memoryTap" | "nonlinearOrder" | "tapOrder".
 cfg.pruning.structuredRanking = "magnitude";          % "magnitude" | "l1" | "l2"; magnitude maps to L1.
 cfg.pruning.structuredTargetPolicy = "closestNotAbove"; % "closestNotAbove"; structured targets may be inexact.
 cfg.pruning.hybridExactTarget = false;                % false only; true is reserved and rejected.
@@ -182,7 +164,7 @@ cfg.warmStart.skipInitialTraining = false;            % true: apply pruning/fine
 
 cfg.sweep = struct();
 cfg.sweep.sparsityList = [0, 0.3 0.4 0.5 0.6];          % Used when targetMode='sparsity'.
-cfg.sweep.targetActiveParamList = [800 1000 1200 1400]; % Used when targetMode='activeTrainableParams'.
+cfg.sweep.targetActiveParamList = [1400 1200 1000 800]; % Used when targetMode='activeTrainableParams'.
 cfg.sweep.fineTuneEpochs = cfg.pruning.fineTuneEpochs; % Pruned-run fine-tune epochs.
 cfg.sweep.freezePruned = cfg.pruning.freezePruned;   % true | false; passed to pruning overrides.
 cfg.sweep.pruningScope = cfg.pruning.scope;           % "global" | "layerwise".

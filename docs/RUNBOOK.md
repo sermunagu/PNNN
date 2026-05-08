@@ -127,16 +127,9 @@ Después:
 
 ---
 
-## Metricas RF / ACPR
+## Metricas oficiales
 
-La configuracion oficial ACPR usa ancho de canal `100 MHz`:
-
-- `cfg.metrics.acpr.channelBandwidthHz = 100e6`
-- `cfg.metrics.acpr.mainChannelBandwidthHz = 100e6`
-- `cfg.metrics.acpr.adjacentBandwidthHz = 100e6`
-- `cfg.metrics.acpr.adjacentSpacingHz = 100e6`
-
-Con la frecuencia de muestreo actual observada `fs = 491.520 MHz`, Nyquist es `245.76 MHz`. Para una senal centrada en `0 Hz`, el canal principal `[-50, +50] MHz` y los primeros adyacentes `[-150, -50] MHz` y `[+50, +150] MHz` caben en Nyquist, por lo que ACPR L1/R1 es valido. Los segundos adyacentes `[-250, -150] MHz` y `[+150, +250] MHz` salen de Nyquist y deben quedar como `N/A`/fuera de banda, sin integracion parcial.
+El reporting oficial se centra en NMSE, comparativas GMP, pruning, parametros activos e integridad de mascaras. EVM y ACPR no forman parte del flujo oficial porque la salida PNNN actual corresponde al bloque modelado/predistorsionador y no a una forma de onda RF final de salida del PA.
 
 ---
 
@@ -312,7 +305,7 @@ Nota de resultados actuales:
 - La corrida de confirmacion `results/pruning_sweeps/20260503_1842` con `seed = 42` es una ejecucion separada de la corrida `seed = 45` en `results/pruning_sweeps/20260503_1727`, y confirma la misma tendencia: la mejor zona practica es la meseta `30%`-`40%`.
 - `40%` es el candidato principal actual porque mantiene NMSE practicamente igual a `30%` y poda mas pesos; `50%` sigue como candidato equilibrado de compresion/rendimiento.
 - `60%` permanece por encima del denso y GMP en la confirmacion `seed = 42`, pero no es el candidato principal porque empieza a degradar frente a `30%`-`40%`.
-- ACPR queda configurado con canal de `100 MHz`. Con `fs = 491.520 MHz`, L1/R1 es valido y L2/R2 queda fuera de Nyquist, por lo que debe reportarse como `N/A`/fuera de banda.
+- EVM y ACPR ya no forman parte del reporting oficial; no usar esas columnas historicas para conclusiones nuevas sin una cadena RF externa validada.
 
 ---
 

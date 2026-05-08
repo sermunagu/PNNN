@@ -1914,3 +1914,122 @@ Resultados:
 
 Pendiente:
 - Mantener los comentarios sincronizados si se añaden nuevos modos o flags reales.
+
+---
+
+### 2026-05-07 — ACPR L1/R1 y tabla compacta de resultados
+
+Objetivo:
+- Corregir el calculo/reporte de ACPR por defecto para la señal baseband de `100 MHz` y simplificar la tabla compacta impresa por consola.
+
+Cambios realizados:
+- ACPR queda configurado por defecto con `maxAdjacent=1`, `channelBandwidthHz=100e6`, `adjacentSpacingHz=100e6` y `centerFrequencyHz=0`.
+- `computeACPR` calcula ACPR como `10*log10(P_adjacent/P_main)` en dBc, integra solo bandas completas dentro de Nyquist y deja L2/R2 como `NaN` si no se solicitan.
+- Si se solicitan L2/R2 y quedan fuera de Nyquist, no se integran parcialmente; L1/R1 validos pueden conservar estado global `WARN` en vez de `INVALID`.
+- La tabla compacta de reporting se redujo a columnas de decision: run, modelo, modo, parametros activos, NMSE, ganancia vs GMP, EVM y ACPR L1/R1/status.
+- La tabla detallada conserva la informacion interna de pruning y metricas para CSV/MAT.
+
+No modificado:
+- No se cambiaron arquitectura, normalizacion, split, mapping, features, pruning, GMP, warm start ni semantica X/Y.
+- No se tocaron `measurements/`, `results/`, `generated_outputs/`, `.mat`, `.fig`, `deploy_package.mat` ni artefactos generados.
+
+---
+
+### 2026-05-07 — Diagnostico ACPR sobre predictions.mat
+
+Objetivo:
+- Auditar por que los sweeps pueden mostrar ACPR L1/R1 cercano a `0 dBc` aunque la geometria de bandas ACPR sea correcta.
+
+Cambios realizados:
+- Se añadio `tools/diagnose_acpr_predictions.m` para recalcular ACPR sobre señales disponibles en un `predictions.mat` existente, sin entrenar, inferir, lanzar sweeps ni modificar artefactos.
+- La utilidad imprime la geometria de bandas ACPR, diagnostico de contigüidad de `idxTrain`/`idxVal`/`idxTest` y una tabla por señal con potencia principal, ACPR L1/R1 y status.
+- Se aclaro en el display compacto/final que el ACPR reportado es sobre la salida de la NN del bloque modelado (`est_test`/`yhat`-like), no necesariamente sobre la salida RF final del PA.
+
+Interpretacion:
+- `computeACPR` usa `bandwidthHz` como ancho total de banda: con `100 MHz` integra centro `+/-50 MHz`.
+- El flujo oficial calcula `ACPR_test_pred` sobre `est_test = predictPhaseNorm(...)`, alineado con `ref_test = y_out(idxTest)`.
+- Con `cfg.split.method='stratified_by_amplitude'`, los vectores TEST no son una captura temporal ordenada/contigua, por lo que ACPR sobre `est_test`/`ref_test` es diagnostico y no una conclusion RF final.
+
+No modificado:
+- No se cambio el calculo oficial de ACPR, arquitectura, pruning, split, normalizacion, mappingMode, GMP, warm start ni semantica X/Y.
+- No se tocaron `measurements/`, `results/`, `generated_outputs/`, `.mat`, `.fig`, `deploy_package.mat` ni artefactos generados.
+
+---
+
+### 2026-05-08 — ACPR conservador sobre forma de onda temporal reconstruida
+
+Objetivo:
+- Evitar que el reporting oficial muestre ACPR sobre vectores de split no temporales (`est_test`, `ref_test`, `est_trainVal`, `ref_trainVal`) como si fueran capturas RF interpretables.
+
+Cambios realizados:
+- Se añadio `reconstructTemporalPredictions` para reconstruir `est_full` y `ref_full` en orden temporal original usando `idxTrainVal`, `idxTest`, `est_trainVal`, `est_test`, `ref_trainVal` y `ref_test`.
+- `train_PNNN_offline.m` deja el ACPR sobre split como `INVALID_SPLIT_NONCONTIGUOUS` y calcula el ACPR reportable solo sobre `NN out full temporal` si la reconstruccion completa es valida.
+- La tabla compacta usa solo ACPR de señal full temporal reconstruida; si no existe o no es valido, muestra `N/A` con el status correspondiente.
+- `diagnose_acpr_predictions.m` ahora compara ACPR diagnostico de split con ACPR de `est_full/ref_full` temporal reconstruido cuando es posible.
+
+Interpretacion:
+- El ACPR reportado sigue siendo sobre la salida de la NN del bloque modelado, no sobre la salida final del PA.
+- Para ACPR RF fisico final hace falta una forma de onda temporal contigua de la salida PA correspondiente.
+
+No modificado:
+- No se toco `computeACPR.m` en esta intervencion.
+- No se cambiaron entrenamientos, sweeps, arquitectura, pruning, split, normalizacion, mappingMode, GMP, warm start ni semantica X/Y.
+- No se tocaron `measurements/`, `results/`, `generated_outputs/`, `.mat`, `.fig`, `deploy_package.mat` ni artefactos generados.
+
+---
+
+### 2026-05-08 — Diagnostico ACPR contra measurement original
+
+Objetivo:
+- Diagnosticar por que el ACPR full temporal reconstruido puede quedar alrededor de `-20 dBc` cuando referencias externas para `100 MHz` esperan valores como `L1/R1 = -26/-26 dBc` o `-34/-33 dBc`.
+
+Cambios realizados:
+- `tools/diagnose_acpr_predictions.m` ahora puede cargar la medida original asociada al run, inferida desde `model.mat`/config o pasada como argumento.
+- El diagnostico calcula ACPR con la misma configuracion de bandas para señales de `predictions.mat`, `est_full/ref_full/error_full` reconstruidas, señales originales de la medida y señales modeladas `x_in/y_out` tras aplicar `mappingMode` local y `removeDC`.
+- La tabla incluye nombre, fuente, tipo temporal, longitud, potencia de canal principal, ACPR L1/R1, L2/R2 solo si se solicita con `maxAdjacent>=2`, y status.
+- Se añade comparacion muestra a muestra entre `ref_full` reconstruida y `measurement modeled y_out`, con RMS, RMS normalizado y max error.
+
+Interpretacion:
+- Si `ref_full` no coincide con `measurement modeled y_out`, el problema apunta a reconstruccion temporal o a una señal objetivo distinta.
+- Si `ref_full` coincide pero ACPR difiere de la referencia externa, la referencia externa puede corresponder a otra señal fisica, por ejemplo salida PA, salida con DPD, salida sin DPD u otra definicion de ACPR.
+
+No modificado:
+- No se toco `computeACPR.m`.
+- No se cambiaron entrenamientos, sweeps, arquitectura, pruning, split, normalizacion, mappingMode, GMP, warm start ni semantica X/Y.
+- No se tocaron `measurements/`, `results/`, `generated_outputs/`, `.mat`, `.fig`, `deploy_package.mat` ni artefactos generados.
+
+---
+
+### 2026-05-08 — Escaneo ACPR de señales en MAT
+
+Objetivo:
+- Añadir una herramienta independiente para localizar que señales reales de un `.mat` producen ACPR cercanos a referencias externas de `100 MHz`, sin modificar `computeACPR.m` ni el reporting oficial.
+
+Cambios realizados:
+- Se creo `tools/scan_acpr_signals_in_mat.m`.
+- La herramienta carga un `.mat`, busca recursivamente vectores numericos reales o complejos en variables, structs y celdas pequeñas, y calcula ACPR con una configuracion comun.
+- La salida lista `SignalPath`, muestras, complejidad, RMS, potencia principal, ACPR L1/R1, status y notas sobre muestras no finitas eliminadas.
+- Si se invoca con `maxAdjacent=2`, tambien muestra L2/R2; con `fs=491.52 MHz` y `BW=100 MHz` esas bandas completas deben quedar fuera de Nyquist.
+
+No modificado:
+- No se toco `computeACPR.m`.
+- No se cambiaron entrenamientos, sweeps, reporting oficial, arquitectura, pruning, split, normalizacion, mappingMode ni semantica X/Y.
+- No se tocaron `measurements/`, `results/`, `generated_outputs/`, `.mat`, `.fig`, `deploy_package.mat` ni artefactos generados.
+
+---
+
+### 2026-05-08 — Retirada de EVM y ACPR del flujo oficial
+
+Objetivo:
+- Eliminar EVM y ACPR del reporting oficial porque, en el flujo actual, la salida de la NN corresponde al bloque modelado/predistorsionador y no a una forma de onda RF final de salida del PA; por tanto, estas metricas añadían ruido y podían inducir interpretaciones incorrectas.
+
+Cambios realizados:
+- Se quitaron `cfg.metrics.evm` y `cfg.metrics.acpr` de la configuracion oficial.
+- `train_PNNN_offline.m` deja de calcular y guardar EVM/ACPR en metadata, summaries y resumen final.
+- `buildPNNNPerformanceSummary`, `pnnnPerformanceToTable`, `pnnnPerformanceCompactTable`, `pnnnPerformanceDisplayTable` y `printFinalPNNNSummary` dejan de emitir columnas o texto EVM/ACPR.
+- Se eliminaron las herramientas y funciones especificas de EVM/ACPR que quedaron sin uso oficial.
+- La tabla compacta queda centrada en run, modelo, modo, parametros activos, NMSE TEST y ganancia frente a GMP.
+
+No modificado:
+- No se cambiaron entrenamientos, sweeps, arquitectura, features, normalizacion, split, mappingMode, pruning, GMP, warm start ni semantica X/Y.
+- No se tocaron `measurements/`, `results/`, `generated_outputs/`, `.mat`, `.fig`, `deploy_package.mat` ni artefactos generados.

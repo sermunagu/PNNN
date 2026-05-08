@@ -1,218 +1,240 @@
 function compactTable = pnnnPerformanceCompactTable(performanceInput)
-% pnnnPerformanceCompactTable - Build the compact DPD-facing performance table.
+% pnnnPerformanceCompactTable - Build the short decision table for sweeps.
 %
 % Accepts a performance struct stack or the long table produced by
-% pnnnPerformanceToTable. The output keeps compact metric columns plus
-% explicit pruning target/count columns used for sweep comparisons.
+% pnnnPerformanceToTable. Detailed pruning/count columns remain in the long
+% table; this compact table keeps only the console-facing decision metrics.
 
 if nargin < 1 || isempty(performanceInput)
     performanceTable = table();
 elseif istable(performanceInput)
+    if isCompactDecisionTable(performanceInput)
+        compactTable = performanceInput(:, {'Run', 'Model', 'Mode', ...
+            'ActiveParams', 'NMSE_Test_dB', 'Gain_vs_GMP_dB'});
+        if any(strcmp(performanceInput.Properties.VariableNames, 'Mask')) && ...
+                any(isMaskFailure(performanceInput.Mask))
+            compactTable.Mask = performanceInput.Mask;
+        end
+        return;
+    end
     performanceTable = performanceInput;
 else
     performanceTable = pnnnPerformanceToTable(performanceInput);
 end
 
 n = height(performanceTable);
-compactTable = table();
-compactTable.Measurement = tableColumnOrDefault(performanceTable, ...
-    'Measurement', repmat("N/A", n, 1));
-compactTable.TargetMode = tableColumnFirstAvailable(performanceTable, ...
-    {'PruningTargetMode', 'TargetMode'}, repmat("sparsity", n, 1));
-compactTable.StructureMode = tableColumnFirstAvailable(performanceTable, ...
-    {'PruningStructureMode', 'StructureMode'}, repmat("unstructured", n, 1));
-compactTable.StructuredRanking = tableColumnFirstAvailable(performanceTable, ...
-    {'StructuredRanking'}, repmat("", n, 1));
-compactTable.StructuredTargetPolicy = tableColumnFirstAvailable(performanceTable, ...
-    {'StructuredTargetPolicy'}, repmat("", n, 1));
-compactTable.Scope = tableColumnFirstAvailable(performanceTable, ...
-    {'PruningScope', 'Scope'}, repmat("", n, 1));
-compactTable.IncludeBiases = tableColumnFirstAvailable(performanceTable, ...
-    {'PruningIncludeBiases', 'IncludeBiases'}, false(n, 1));
-compactTable.Sparsity = tableColumnFirstAvailable(performanceTable, ...
-    {'SparsityTarget_pct', 'Sparsity'}, NaN(n, 1));
-compactTable.Sparsity = normalizeDisabledSparsity( ...
-    compactTable.Sparsity, performanceTable);
-compactTable.EffectiveSparsity = tableColumnFirstAvailable(performanceTable, ...
-    {'SparsityActual_pct', 'EffectiveSparsity'}, NaN(n, 1));
-compactTable.TargetActiveParams = tableColumnFirstAvailable(performanceTable, ...
-    {'TargetActiveTrainableParams', 'TargetActiveParams'}, NaN(n, 1));
-compactTable.ActualActiveParams = tableColumnFirstAvailable(performanceTable, ...
+Run = stringColumnFirstAvailable(performanceTable, ...
+    {'Run', 'Measurement', 'Description'}, repmat("N/A", n, 1));
+Model = buildModelLabels(performanceTable);
+ActiveParams = numericColumnFirstAvailable(performanceTable, ...
     {'ActualActiveTrainableParams', 'ActualActiveParams'}, NaN(n, 1));
-compactTable.TargetActiveParamGap = tableColumnFirstAvailable(performanceTable, ...
-    {'TargetActiveParamGap'}, NaN(n, 1));
-compactTable.ActiveWeights = tableColumnFirstAvailable(performanceTable, ...
-    {'ActiveWeightParams', 'ActiveWeights'}, NaN(n, 1));
-compactTable.ActiveBiases = tableColumnFirstAvailable(performanceTable, ...
-    {'ActiveBiasParams', 'ActiveBiases'}, NaN(n, 1));
-compactTable.ProtectedParams = tableColumnFirstAvailable(performanceTable, ...
-    {'ProtectedTrainableParams', 'ProtectedParams'}, NaN(n, 1));
-compactTable.TotalTrainable = tableColumnFirstAvailable(performanceTable, ...
+totalTrainable = numericColumnFirstAvailable(performanceTable, ...
     {'TotalTrainableParams', 'TotalTrainable'}, NaN(n, 1));
-compactTable.TotalPrunable = tableColumnFirstAvailable(performanceTable, ...
-    {'TotalPrunableParams', 'TotalPodableParams', 'TotalPrunable'}, NaN(n, 1));
-compactTable.TotalInputFeatures = tableColumnFirstAvailable(performanceTable, ...
-    {'TotalInputFeatures'}, NaN(n, 1));
-compactTable.EffectiveInputFeatures = tableColumnFirstAvailable( ...
-    performanceTable, {'EffectiveInputFeatures', 'ActiveInputFeatures'}, ...
-    NaN(n, 1));
-compactTable.PrunedInputFeatures = tableColumnFirstAvailable( ...
-    performanceTable, {'PrunedInputFeatures'}, NaN(n, 1));
-compactTable.TotalFeatureGroups = tableColumnFirstAvailable(performanceTable, ...
-    {'TotalFeatureGroups'}, NaN(n, 1));
-compactTable.ActiveFeatureGroups = tableColumnFirstAvailable(performanceTable, ...
-    {'ActiveFeatureGroups'}, NaN(n, 1));
-compactTable.PrunedFeatureGroups = tableColumnFirstAvailable(performanceTable, ...
-    {'PrunedFeatureGroups'}, NaN(n, 1));
-compactTable.NMSE_Identificacion_dB = tableColumnFirstAvailable( ...
-    performanceTable, {'NMSE_TrainVal_dB', 'NMSE_Identificacion_dB'}, ...
-    NaN(n, 1));
-compactTable.NMSE_Validacion_dB = tableColumnFirstAvailable( ...
-    performanceTable, {'NMSE_Test_dB', 'NMSE_Validacion_dB'}, NaN(n, 1));
-compactTable.Gain_Baseline_dB = tableColumnFirstAvailable( ...
-    performanceTable, {'GainNMSE_Test_vs_Baseline_dB', ...
-    'Gain_Baseline_dB'}, NaN(n, 1));
-hasBaselineGainColumn = any(strcmp(performanceTable.Properties.VariableNames, ...
-    'GainNMSE_Test_vs_Baseline_dB')) || ...
-    any(strcmp(performanceTable.Properties.VariableNames, 'Gain_Baseline_dB'));
-if ~hasBaselineGainColumn || all(~isfinite(compactTable.Gain_Baseline_dB))
-    compactTable.Gain_Baseline_dB = computeBaselineGain(compactTable);
-end
-compactTable.Gain_GMP_dB = tableColumnFirstAvailable(performanceTable, ...
-    {'GainNMSE_Test_vs_GMPJustoPinV_dB', ...
+missingActive = ~isfinite(ActiveParams);
+ActiveParams(missingActive) = totalTrainable(missingActive);
+
+Mode = buildModeLabels(performanceTable, ActiveParams);
+NMSE_Test_dB = numericColumnFirstAvailable(performanceTable, ...
+    {'NMSE_Test_dB', 'NMSE_Validacion_dB'}, NaN(n, 1));
+Gain_vs_GMP_dB = numericColumnFirstAvailable(performanceTable, ...
+    {'GainNMSE_Test_vs_GMPJustoPinV_dB', 'Gain_GMP_dB', ...
     'GainNMSE_Test_vs_GMPJustoRidge1e4_dB', ...
-    'GainNMSE_Test_vs_GMPJustoRidge1e3_dB', 'Gain_GMP_dB'}, NaN(n, 1));
-compactTable.PAPR_Test_dB = tableColumnFirstAvailable(performanceTable, ...
-    {'PAPR_Test_Pred_dB', 'PAPR_Test_dB'}, NaN(n, 1));
-compactTable.EVM_Test_dB = tableColumnFirstAvailable(performanceTable, ...
-    {'EVM_Test_dB'}, NaN(n, 1));
-compactTable.EVM_Test_pct = tableColumnFirstAvailable(performanceTable, ...
-    {'EVM_Test_pct'}, NaN(n, 1));
-compactTable.ACPR_L2_dB = tableColumnFirstAvailable(performanceTable, ...
-    {'ACPR_Test_Pred_Left2_dB', 'ACPR_L2_dB'}, NaN(n, 1));
-compactTable.ACPR_L1_dB = tableColumnFirstAvailable(performanceTable, ...
-    {'ACPR_Test_Pred_Left1_dB', 'ACPR_L1_dB'}, NaN(n, 1));
-compactTable.ACPR_R1_dB = tableColumnFirstAvailable(performanceTable, ...
-    {'ACPR_Test_Pred_Right1_dB', 'ACPR_R1_dB'}, NaN(n, 1));
-compactTable.ACPR_R2_dB = tableColumnFirstAvailable(performanceTable, ...
-    {'ACPR_Test_Pred_Right2_dB', 'ACPR_R2_dB'}, NaN(n, 1));
-compactTable.Pruned = tableColumnFirstAvailable(performanceTable, ...
-    {'PrunedPrunableParams', 'PrunedParams', 'Pruned'}, NaN(n, 1));
-compactTable.Remaining = tableColumnFirstAvailable(performanceTable, ...
-    {'RemainingPrunableParams', 'RemainingParams', 'Remaining'}, NaN(n, 1));
-compactTable.Mask = tableColumnFirstAvailable(performanceTable, ...
+    'GainNMSE_Test_vs_GMPJustoRidge1e3_dB'}, NaN(n, 1));
+
+compactTable = table(Run, Model, Mode, ActiveParams, NMSE_Test_dB, ...
+    Gain_vs_GMP_dB);
+
+maskStatus = stringColumnFirstAvailable(performanceTable, ...
     {'MaskIntegrityStatus', 'Mask'}, repmat("N/A", n, 1));
-compactTable = normalizeDisabledPruningRows(compactTable, performanceTable);
-compactTable = repairBaselineRemaining(compactTable, performanceTable);
-end
-
-function sparsity = normalizeDisabledSparsity(sparsity, performanceTable)
-disabledRows = disabledPruningRows(performanceTable);
-if any(disabledRows)
-    sparsity(disabledRows) = 0;
+if any(isMaskFailure(maskStatus))
+    compactTable.Mask = maskStatus;
 end
 end
 
-function compactTable = normalizeDisabledPruningRows(compactTable, performanceTable)
-disabledRows = disabledPruningRows(performanceTable);
-if ~any(disabledRows)
-    return;
+function tf = isCompactDecisionTable(inputTable)
+requiredColumns = {'Run', 'Model', 'Mode', 'ActiveParams', ...
+    'NMSE_Test_dB', 'Gain_vs_GMP_dB'};
+tf = all(ismember(requiredColumns, inputTable.Properties.VariableNames));
 end
 
-compactTable.Sparsity(disabledRows) = 0;
-compactTable.EffectiveSparsity(disabledRows) = 0;
-compactTable.Pruned(disabledRows) = 0;
-compactTable.Remaining(disabledRows) = NaN;
-compactTable.Mask(disabledRows) = "N/A";
-end
-
-function disabledRows = disabledPruningRows(performanceTable)
+function labels = buildModelLabels(performanceTable)
 n = height(performanceTable);
-disabledRows = false(n, 1);
-if ~any(strcmp(performanceTable.Properties.VariableNames, 'PruningEnabled'))
-    return;
+neurons = stringColumnFirstAvailable(performanceTable, ...
+    {'NumNeurons'}, repmat("", n, 1));
+activations = stringColumnFirstAvailable(performanceTable, ...
+    {'ActType', 'Activation'}, repmat("", n, 1));
+
+labels = strings(n, 1);
+for i = 1:n
+    nums = regexp(char(neurons(i)), '\d+', 'match');
+    if isempty(nums)
+        baseLabel = "PNNN";
+    else
+        baseLabel = "N" + strjoin(string(nums), "x");
+    end
+
+    activationLabel = upper(strtrim(activations(i)));
+    if strlength(activationLabel) > 0 && activationLabel ~= "N/A"
+        labels(i) = baseLabel + " " + activationLabel;
+    else
+        labels(i) = baseLabel;
+    end
+end
 end
 
-pruningEnabled = performanceTable.PruningEnabled;
-if islogical(pruningEnabled) || isnumeric(pruningEnabled)
-    disabledRows = ~logical(pruningEnabled);
+function labels = buildModeLabels(performanceTable, activeParams)
+n = height(performanceTable);
+pruningEnabled = logicalColumnFirstAvailable(performanceTable, ...
+    {'PruningEnabled'}, true(n, 1));
+structureMode = lower(stringColumnFirstAvailable(performanceTable, ...
+    {'PruningStructureMode', 'StructureMode'}, repmat("unstructured", n, 1)));
+targetActive = numericColumnFirstAvailable(performanceTable, ...
+    {'TargetActiveTrainableParams', 'TargetActiveParams'}, NaN(n, 1));
+sparsity = numericColumnFirstAvailable(performanceTable, ...
+    {'SparsityTarget_pct', 'Sparsity'}, NaN(n, 1));
+activeFeatures = numericColumnFirstAvailable(performanceTable, ...
+    {'EffectiveInputFeatures', 'ActiveInputFeatures'}, NaN(n, 1));
+totalFeatures = numericColumnFirstAvailable(performanceTable, ...
+    {'TotalInputFeatures'}, NaN(n, 1));
+activeGroups = numericColumnFirstAvailable(performanceTable, ...
+    {'ActiveFeatureGroups'}, NaN(n, 1));
+totalGroups = numericColumnFirstAvailable(performanceTable, ...
+    {'TotalFeatureGroups'}, NaN(n, 1));
+
+labels = strings(n, 1);
+for i = 1:n
+    if ~pruningEnabled(i) || isDenseSparsity(sparsity(i), targetActive(i))
+        labels(i) = "Dense";
+        continue;
+    end
+
+    modeName = structureModeLabel(structureMode(i));
+    if structureMode(i) ~= "unstructured"
+        if isfinite(activeFeatures(i)) && isfinite(totalFeatures(i))
+            labels(i) = sprintf('%s %.0f/%.0f features', ...
+                char(modeName), activeFeatures(i), totalFeatures(i));
+        elseif isfinite(activeGroups(i)) && isfinite(totalGroups(i))
+            labels(i) = sprintf('%s %.0f/%.0f groups', ...
+                char(modeName), activeGroups(i), totalGroups(i));
+        else
+            labels(i) = modeParamLabel(modeName, targetActive(i), activeParams(i));
+        end
+    else
+        labels(i) = modeParamLabel(modeName, targetActive(i), activeParams(i));
+        if labels(i) == modeName && isfinite(sparsity(i)) && sparsity(i) > 0
+            labels(i) = sprintf('%s %.1f%%', modeName, normalizePercent(sparsity(i)));
+        end
+    end
+end
+end
+
+function tf = isDenseSparsity(sparsity, targetActive)
+tf = isfinite(sparsity) && sparsity <= 0 && ~isfinite(targetActive);
+end
+
+function label = modeParamLabel(modeName, targetActive, activeParams)
+paramCount = NaN;
+if isfinite(targetActive) && targetActive > 0
+    paramCount = targetActive;
+elseif isfinite(activeParams) && activeParams > 0
+    paramCount = activeParams;
+end
+
+if isfinite(paramCount)
+    label = sprintf('%s %.0f params', char(modeName), paramCount);
 else
-    disabledRows = strcmpi(string(pruningEnabled), "false");
+    label = modeName;
 end
 end
 
-function values = tableColumnOrDefault(summaryTable, columnName, defaultValues)
-if any(strcmp(summaryTable.Properties.VariableNames, columnName))
-    values = summaryTable.(columnName);
+function label = structureModeLabel(modeName)
+switch lower(string(modeName))
+    case "inputfeature"
+        label = "InputFeature";
+    case "memorytap"
+        label = "MemoryTap";
+    case "nonlinearorder"
+        label = "NonlinearOrder";
+    case "taporder"
+        label = "TapOrder";
+    otherwise
+        label = "Unstructured";
+end
+end
+
+function pct = normalizePercent(value)
+if value <= 1
+    pct = 100 * value;
 else
-    values = defaultValues;
+    pct = value;
 end
 end
 
-function values = tableColumnFirstAvailable(summaryTable, columnNames, defaultValues)
+function failed = isMaskFailure(maskStatus)
+status = upper(strtrim(string(maskStatus)));
+failed = ~(status == "" | status == "N/A" | status == "OK" | ...
+    status == "TRUE" | status == "PASS" | status == "PASSED");
+end
+
+function values = numericColumnFirstAvailable(summaryTable, columnNames, defaultValues)
 values = defaultValues;
 for k = 1:numel(columnNames)
     columnName = columnNames{k};
     if any(strcmp(summaryTable.Properties.VariableNames, columnName))
-        values = summaryTable.(columnName);
+        values = numericVector(summaryTable.(columnName), height(summaryTable), defaultValues);
         return;
     end
 end
 end
 
-function gain = computeBaselineGain(compactTable)
-gain = NaN(height(compactTable), 1);
-baselineIdx = find(compactTable.Sparsity <= 0 & ...
-    isfinite(compactTable.NMSE_Validacion_dB), 1, 'first');
-if isempty(baselineIdx)
-    return;
-end
-
-baselineNmse = compactTable.NMSE_Validacion_dB(baselineIdx);
-validRows = isfinite(compactTable.NMSE_Validacion_dB);
-gain(validRows) = baselineNmse - compactTable.NMSE_Validacion_dB(validRows);
-end
-
-function compactTable = repairBaselineRemaining(compactTable, performanceTable)
-if height(compactTable) == 0
-    return;
-end
-
-baselineRows = compactTable.Sparsity <= 0;
-if any(strcmp(performanceTable.Properties.VariableNames, 'PruningEnabled'))
-    baselineRows = baselineRows | ~performanceTable.PruningEnabled;
-end
-
-needsRepair = baselineRows & ...
-    (~isfinite(compactTable.Remaining) | compactTable.Remaining == 0);
-if ~any(needsRepair)
-    return;
-end
-
-totalPrunableParams = inferTotalPrunableParams(compactTable, performanceTable);
-if isfinite(totalPrunableParams)
-    compactTable.Remaining(needsRepair) = totalPrunableParams;
-else
-    compactTable.Remaining(needsRepair) = NaN;
-end
-end
-
-function totalPrunableParams = inferTotalPrunableParams(compactTable, performanceTable)
-totalPrunableParams = NaN;
-for columnName = ["TotalPrunableParams", "TotalPodableParams"]
-    if any(strcmp(performanceTable.Properties.VariableNames, columnName))
-        totals = performanceTable.(columnName);
-        totals = totals(isfinite(totals) & totals > 0);
-        if ~isempty(totals)
-            totalPrunableParams = max(totals);
-            return;
-        end
+function values = stringColumnFirstAvailable(summaryTable, columnNames, defaultValues)
+values = string(defaultValues);
+for k = 1:numel(columnNames)
+    columnName = columnNames{k};
+    if any(strcmp(summaryTable.Properties.VariableNames, columnName))
+        values = stringVector(summaryTable.(columnName), height(summaryTable), values);
+        return;
     end
 end
-
-paramTotals = compactTable.Pruned + compactTable.Remaining;
-paramTotals = paramTotals(isfinite(paramTotals) & paramTotals > 0);
-if ~isempty(paramTotals)
-    totalPrunableParams = max(paramTotals);
 end
+
+function values = logicalColumnFirstAvailable(summaryTable, columnNames, defaultValues)
+values = logical(defaultValues);
+for k = 1:numel(columnNames)
+    columnName = columnNames{k};
+    if any(strcmp(summaryTable.Properties.VariableNames, columnName))
+        values = logicalVector(summaryTable.(columnName), height(summaryTable), values);
+        return;
+    end
+end
+end
+
+function values = numericVector(rawValue, n, defaultValues)
+values = defaultValues;
+if isnumeric(rawValue) || islogical(rawValue)
+    rawNumeric = double(rawValue(:));
+else
+    rawNumeric = str2double(string(rawValue(:)));
+end
+copyCount = min(numel(rawNumeric), n);
+values(1:copyCount) = rawNumeric(1:copyCount);
+end
+
+function values = stringVector(rawValue, n, defaultValues)
+values = string(defaultValues);
+rawString = string(rawValue(:));
+copyCount = min(numel(rawString), n);
+values(1:copyCount) = rawString(1:copyCount);
+end
+
+function values = logicalVector(rawValue, n, defaultValues)
+values = logical(defaultValues);
+if islogical(rawValue) || isnumeric(rawValue)
+    rawLogical = logical(rawValue(:));
+else
+    rawText = lower(strtrim(string(rawValue(:))));
+    rawLogical = rawText == "true" | rawText == "1" | rawText == "yes";
+end
+copyCount = min(numel(rawLogical), n);
+values(1:copyCount) = rawLogical(1:copyCount);
 end
